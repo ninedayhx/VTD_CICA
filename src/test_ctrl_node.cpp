@@ -42,8 +42,6 @@ void controller_callback(const ros::TimerEvent &e);
 int main(int argc, char **argv)
 {
 
-    // cout << "tset" << endl;
-
     // clang-format off
     Eigen::MatrixXf Q_lat(2, 2), R_lat(1, 1);
     Q_lat << 10, 0, 
