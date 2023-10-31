@@ -110,6 +110,32 @@ public:
 };
 
 /**
+ * @brief 自车信息
+ *
+ */
+class car_self : public car_t
+{
+public:
+    const float car_front_len = 3.647;                   // 车辆后轴到前保险杠距离
+    const float max_delta = 15;                          // 最大转向角
+    const float max_steer_angle = 540;                   // 最大方向盘转角
+    const float l_fr = 2.691;                            // 轴距
+    const float p[6] = {0.01883, -0.0002959, -0.005006,  //
+                        0.0003868, 0.03745, -0.0004034}; // 加速度-油门的对应系数
+                                                         //
+    float L_des;                                         // 跟车间距
+
+    // state
+    int start_follow;
+    float u_des;
+
+    car_self();
+    void update(const common_msgs::CICV_Location &msg, lane_param _lane);
+    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, bool en_filter);
+    bool is_in_destination();
+};
+
+/**
  * @brief 前车信息
  *
  */
@@ -118,35 +144,11 @@ class leader_t : public car_t
 public:
     float d_x;      // leader车相较于自车坐标系下的x位置
     float d_y;      // leader车相较于自车坐标系下的y位置
+    float d_phi;    // leader方向和自车方向夹角
     float distance; // leader和follwer的距离,绝对值
     float line_len; // 沿轨迹距离
 
-    void update(common_msgs::Perceptionobject msg, lane_param _lane);
-};
-
-/**
- * @brief 自车信息
- *
- */
-class car_self : public car_t
-{
-public:
-    const float car_front_len = 3.647;                    // 车辆后轴到前保险杠距离
-    const float max_delta = 15;                           // 最大转向角
-    const float max_steer_angle = 540;                    // 最大方向盘转角
-    const float l_fr = 2.691;                             // 轴距
-    const double p[6] = {0.01883, -0.0002959, -0.005006,  //
-                         0.0003868, 0.03745, -0.0004034}; // 加速度-油门的对应系数
-                                                          //
-    float L_des;                                          // 跟车间距
-
-    // state
-    int start_follow;
-
-    car_self();
-    void update(const common_msgs::CICV_Location &msg, lane_param _lane);
-    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, bool en_filter);
-    bool is_in_destination();
+    void update(common_msgs::Perceptionobject msg, lane_param _lane, car_self _self);
 };
 
 /**

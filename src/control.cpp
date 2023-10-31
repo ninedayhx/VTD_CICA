@@ -42,17 +42,25 @@ bool car_t::is_stopped()
 /***********************************************/
 /*                  leader_t                   */
 /***********************************************/
-void leader_t::update(common_msgs::Perceptionobject msg, lane_param _lane)
+void leader_t::update(common_msgs::Perceptionobject msg, lane_param _lane, car_self _self)
 {
     phi = msg.heading;
+    d_phi = phi - _self.phi;
     p_x = msg.xg;
     p_y = msg.yg;
     d_x = msg.x;
     d_y = msg.y;
     v_x = msg.v_xg * cos(phi) + msg.v_yg * sin(phi);
     v_y = -msg.v_xg * cos(phi) + msg.v_yg * sin(phi);
-    a_x = msg.a_x;
-    a_y = msg.a_y;
+
+    a_x_last = a_x;
+    a_y_last = a_y;
+    a_x = (msg.a_x + _self.a_x) * cos(d_phi) + (msg.a_y + _self.a_y) * sin(d_phi);
+    a_y = (msg.a_x + _self.a_x) * sin(d_phi) + (msg.a_y + _self.a_y) * cos(d_phi);
+
+    j_x = (a_x - a_x_last) * data_hz;
+    j_y = (a_y - a_y_last) * data_hz;
+
     distance = pow(msg.x * msg.x + msg.y * msg.y, 0.5) - _lane.car_front_len; // 当跟车距离很近时，近似为绝对距离
     line_len = _lane.compute_line_length(d_x, _lane.car_front_len);
 }
@@ -95,7 +103,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
     }
     a_last = a_des;
 
-    if (a_des > 0)
+    if (a_des >= 0)
     {
         if (v_x < 5 && v_x >= 0)
         {
@@ -111,13 +119,15 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
     {
         if (v_x >= 0.01)
         {
-            u = a_des / 10;
+            u = a_des / (float)10;
         }
         else
         {
             u = 0;
         }
     }
+
+    u_des = u;
 
     common_msgs::Control_Test msg;
     if (u >= 0)
@@ -137,7 +147,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
 
 bool car_self::is_in_destination()
 {
-    if ((p_x < -22) && (phi > M_PI))
+    if ((p_y < -22) && (phi > M_PI))
     {
         if (is_stopped())
         {
@@ -284,7 +294,7 @@ void control_t::leader_update()
     }
     if (car_num == 1)
     {
-        leader.update(car[0], lane);
+        leader.update(car[0], lane, self);
         is_lane_changing();
     }
     if (car_num > 1)
