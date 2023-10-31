@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="test_ctrl" type="test_ctrl_node" name="test_ctrl" output="screen"/>	
+</launch>
