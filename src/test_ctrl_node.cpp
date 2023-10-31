@@ -138,6 +138,12 @@ void controller_callback(const ros::TimerEvent &e)
 
     std_msgs::Float32 debug_msg;
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(5);
+    dmsg.data.resize(6);
+    dmsg.data[0] = car_ctrl.self.a_x;
+    dmsg.data[1] = car_ctrl.leader.a_x;
+    dmsg.data[2] = car_ctrl.self.j_x;
+    dmsg.data[3] = car_ctrl.lon_a_des;
+    dmsg.data[4] = car_ctrl.self.u_des;
+
     debug_pub.publish(dmsg);
 }

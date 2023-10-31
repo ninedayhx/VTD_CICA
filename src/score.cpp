@@ -37,9 +37,17 @@ public:
     float comfortable_score, complete_score, safety_score, all_score;
 
     bool is_complete, compute_complete;
+
+    car_obs_t();
     void sample_data();
     void compute_score();
 };
+
+car_obs_t::car_obs_t()
+{
+    is_complete = 1;
+    compute_complete = false;
+}
 
 chrono::_V2::steady_clock::time_point start_time;
 
@@ -57,7 +65,7 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "test_ctrl_node");
+    ros::init(argc, argv, "compute");
     ros::NodeHandle nh;
 
     location_sub = nh.subscribe("/cicv_location", 1000, location_callback);
@@ -107,6 +115,8 @@ void observe_callback(const ros::TimerEvent &e)
 void car_obs_t::sample_data()
 {
     static int follow_flag = 0;
+    float dis_des = 5 + 1.5 * self.v_x;
+    frame_sum++;
     if (self.a_x < -5 || self.a_x > 3)
     {
         ax_cnt++;
@@ -124,7 +134,7 @@ void car_obs_t::sample_data()
         jy_cnt++;
     }
 
-    follow_coef = (leader.line_len - self.L_des) / self.L_des;
+    follow_coef = (leader.line_len - dis_des) / dis_des;
 
     if (follow_flag == 0 && self.v_x > 0.6 * leader.v_x && self.v_x < 1.4 * leader.v_x)
     {
@@ -142,6 +152,12 @@ void car_obs_t::sample_data()
             is_complete = 0;
         }
     }
+
+    std::cout << " ax_c: " << ax_cnt
+              << " ay_c: " << ay_cnt
+              << " jx_c: " << jx_cnt
+              << " jy_c: " << jy_cnt
+              << " ni_f: " << not_idea_cnt << std::endl;
 }
 
 void car_obs_t::compute_score()
