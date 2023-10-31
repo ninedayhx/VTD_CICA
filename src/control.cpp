@@ -24,6 +24,34 @@ float degTorad(float deg)
 /***********************************************/
 /*                   构造函数                   */
 /***********************************************/
+control_t::control_t()
+{
+    sim_err_mod.A.resize(2, 2);
+    sim_err_mod.B.resize(2, 1);
+    sim_err_mod.A << 0, 0, 30, 0;
+    sim_err_mod.B << 30 / 2.7, 0;
+
+    float T_delay = 0.01;
+    follow_leader_mod.A.resize(3, 3);
+    follow_leader_mod.B.resize(3, 1);
+    follow_leader_mod.A << 0, 1, 0, 0, 0, -1, 0, 0, -1 / T_delay;
+    follow_leader_mod.B << 0, 0, 1 / T_delay;
+
+    float T_d = 0.1;
+    float T_s = 0.01;
+    follow_du_mod.A.resize(4, 4);
+    follow_du_mod.B.resize(4, 1);
+    // clang-format off
+    follow_du_mod.A <<  1,  T_s,  0,              0,
+                        0,  1,   -T_s,            0,
+                        0,  0,    1 - T_s / T_d,  T_s / T_d,
+                        0,  0,    0,              1;
+    follow_du_mod.B <<  0, 
+                        0, 
+                        T_s / T_d, 
+                        1;
+    // clang-format on
+}
 
 /***********************************************/
 /*                   car_t                     */
@@ -126,8 +154,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
             u = 0;
         }
     }
-
-    u_des = u;
+    u_des = a_des;
 
     common_msgs::Control_Test msg;
     if (u >= 0)
@@ -262,19 +289,6 @@ double lane_param::line_func(float *c, float x)
 /***********************************************/
 /*                  control_t                  */
 /***********************************************/
-control_t::control_t()
-{
-    sim_err_mod.A.resize(2, 2);
-    sim_err_mod.B.resize(2, 1);
-    sim_err_mod.A << 0, 0, 30, 0;
-    sim_err_mod.B << 30 / 2.7, 0;
-
-    float T_delay = 0.01;
-    follow_leader_mod.A.resize(3, 3);
-    follow_leader_mod.B.resize(3, 1);
-    follow_leader_mod.A << 0, 1, 0, 0, 0, -1, 0, 0, -1 / T_delay;
-    follow_leader_mod.B << 0, 0, 1 / T_delay;
-}
 
 void control_t::leader_update()
 {
@@ -474,22 +488,13 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
 
     self.L_des = 5 + 1.5 * self.v_x;
 
-    float beta = 0.05, beta2 = 0.05;
-    ax_filter = self.a_x * beta + ax_last * (1 - beta);
-    lax_filter = leader.a_x * beta + lax_last * (1 - beta2);
-
-    lax_last = lax_filter;
-    ax_last = ax_filter;
-
     float dx = leader.line_len - self.L_des;
     float dv = leader.v_x - self.v_x;
     float da = leader.a_x - self.a_x;
-    float da_filter = lax_filter - ax_filter;
 
-    // test_da_filter = beta * da + (1 - beta) * da_last;
-    da_last = da_filter;
+    da_last = da;
 
-    float da_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da_filter + _lqr.K(0, 3) * a_des_last);
+    float da_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da + _lqr.K(0, 3) * a_des_last);
     if (std::abs(da_des) > 5)
     {
         std::cout << "du" << da_des << std::endl;

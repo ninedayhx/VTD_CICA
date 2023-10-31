@@ -42,6 +42,8 @@ void controller_callback(const ros::TimerEvent &e);
 int main(int argc, char **argv)
 {
 
+    // cout << "tset" << endl;
+
     // clang-format off
     Eigen::MatrixXf Q_lat(2, 2), R_lat(1, 1);
     Q_lat << 10, 0, 
@@ -59,11 +61,11 @@ int main(int argc, char **argv)
 
     Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
 
-    Q_lon_du << 30, 0, 0,    0,
-                0, 10, 0,    0,
-                0, 0, 10, 0,
-                0, 0, 0,    5;
-    R_lon_du << 30;
+    Q_lon_du << 75,  0,  0,   0,
+                0,   1, 0,   0,
+                0,   0,  1,  0,
+                0,   0,  0,   1000;
+    R_lon_du << 500;
     LQR_lon_du.get_param(Q_lon_du, R_lon_du, 0.01);
 
     // clang-format on
@@ -110,24 +112,24 @@ void controller_callback(const ros::TimerEvent &e)
 {
     // cout << "test4" << endl;
     LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
-    LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
-    // LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
+    // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
+    LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
 
     /*
         预赛规则
     */
     if (car_ctrl.self.start_follow)
     {
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_longtitute), false);
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), true);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
+        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), true);
 
-        // cout << "follow leader ing...  lane = " << obt_self.leader.lane << endl;
+        // cout << "follow leader ing...  lane = " << endl;
     }
     else
     {
         car_ctrl.lon_v_des = 30;
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        // cout << "no leader, self speed... lane = " << obt_self.leader.lane << endl;
+        // cout << "no leader, self speed... lane = " << endl;
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;
