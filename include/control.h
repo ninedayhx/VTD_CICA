@@ -24,6 +24,7 @@
 #include "common_msgs/Perceptionobjects.h"
 
 #include "LQR.h"
+#include "MPC.h"
 
 float radTodeg(float rad);
 float degTorad(float deg);
@@ -167,6 +168,8 @@ public:
     LTI follow_leader_mod;
     LTI follow_du_mod;
 
+    Eigen::VectorXd x_k;
+
     float lon_v_des;
     float lon_a_des;
 
@@ -174,6 +177,7 @@ public:
 
     void leader_update();
     void is_lane_changing();
+    void update_state_vec();
 
     common_msgs::Control_Test lon_speed_control(float speed_des);
     float lane_keep_LQR_control(LQR _lqr);

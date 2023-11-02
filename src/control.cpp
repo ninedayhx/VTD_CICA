@@ -31,17 +31,19 @@ control_t::control_t()
     sim_err_mod.A << 0, 0, 30, 0;
     sim_err_mod.B << 30 / 2.7, 0;
 
+    // clang-format off
     float T_delay = 0.01;
     follow_leader_mod.A.resize(3, 3);
     follow_leader_mod.B.resize(3, 1);
-    follow_leader_mod.A << 0, 1, 0, 0, 0, -1, 0, 0, -1 / T_delay;
+    follow_leader_mod.A <<  0, 1, 0, 
+                            0, 0, -1, 
+                            0, 0, -1 / T_delay;
     follow_leader_mod.B << 0, 0, 1 / T_delay;
 
     float T_d = 0.1;
     float T_s = 0.01;
     follow_du_mod.A.resize(4, 4);
     follow_du_mod.B.resize(4, 1);
-    // clang-format off
     follow_du_mod.A <<  1,  T_s,  0,              0,
                         0,  1,   -T_s,            0,
                         0,  0,    1 - T_s / T_d,  T_s / T_d,
@@ -51,6 +53,7 @@ control_t::control_t()
                         T_s / T_d, 
                         1;
     // clang-format on
+    x_k.resize(3);
 }
 
 /***********************************************/
@@ -465,7 +468,9 @@ float control_t::leader_follow_LQR_control(LQR _lqr)
     float dv = leader.v_x - self.v_x;
     float da = leader.a_x - self.a_x;
 
+    // float a_des = -(_lqr.K(0, 0) * x_k(0) + _lqr.K(0, 1) * x_k(1) + _lqr.K(0, 2) * x_k(2));
     float a_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da);
+
     if (a_des >= 5.4)
     {
         a_des = 5.4;
@@ -486,15 +491,15 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
     static float da_last, ax_last, lax_last;
     float a_des, ax_filter, lax_filter;
 
-    self.L_des = 5 + 1.5 * self.v_x;
+    // self.L_des = 5 + 1.5 * self.v_x;
 
-    float dx = leader.line_len - self.L_des;
-    float dv = leader.v_x - self.v_x;
-    float da = leader.a_x - self.a_x;
+    // float dx = leader.line_len - self.L_des;
+    // float dv = leader.v_x - self.v_x;
+    // float da = leader.a_x - self.a_x;
 
-    da_last = da;
+    da_last = x_k(2);
 
-    float da_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da + _lqr.K(0, 3) * a_des_last);
+    float da_des = -(_lqr.K(0, 0) * x_k(0) + _lqr.K(0, 1) * x_k(1) + _lqr.K(0, 2) * x_k(2) + _lqr.K(0, 3) * a_des_last);
     if (std::abs(da_des) > 5)
     {
         std::cout << "du" << da_des << std::endl;
@@ -512,4 +517,13 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
 
     lon_a_des = a_des;
     return a_des;
+}
+
+void control_t::update_state_vec()
+{
+    self.L_des = 5 + 1.5 * self.v_x;
+
+    x_k(0) = (double)(leader.line_len - self.L_des);
+    x_k(1) = (double)(leader.v_x - self.v_x);
+    x_k(2) = (double)(leader.a_x - self.a_x);
 }
