@@ -134,22 +134,26 @@ void car_obs_t::sample_data()
         jy_cnt++;
     }
 
-    follow_coef = (leader.line_len - dis_des) / dis_des;
+    if (self.start_follow)
+    {
+        cout << "test:" << endl;
+        follow_coef = (leader.line_len - dis_des) / dis_des;
 
-    if (follow_flag == 0 && self.v_x > 0.6 * leader.v_x && self.v_x < 1.4 * leader.v_x)
-    {
-        follow_flag = 1;
-    }
-    if (follow_flag == 1)
-    {
-        follow_frame_sum++;
-        if (follow_coef <= -0.5 || follow_coef >= 0.3)
+        if (follow_flag == 0 && self.v_x > 0.6 * leader.v_x && self.v_x < 1.4 * leader.v_x)
         {
-            not_idea_cnt++;
+            follow_flag = 1;
         }
-        if (follow_coef <= -0.65 || follow_coef >= 0.6)
+        if (follow_flag == 1)
         {
-            is_complete = 0;
+            follow_frame_sum++;
+            if (follow_coef <= -0.5 || follow_coef >= 0.3)
+            {
+                not_idea_cnt++;
+            }
+            if (follow_coef <= -0.65 || follow_coef >= 0.6)
+            {
+                is_complete = 0;
+            }
         }
     }
 
