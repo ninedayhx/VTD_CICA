@@ -433,7 +433,7 @@ float control_t::lane_keep_LQR_control(LQR _lqr)
     float u_delta = -_lqr.K(0, 0) * err_phi - _lqr.K(0, 1) * err_dis;
     float u_delta_forward = lane.lane_phi_forward;
     float u_angle = u_delta - self.v_x / self.l_fr * lane.lane_phi_forward;
-    u_angle = u_delta / M_PI * 180; // rad to deg
+    u_angle = radTodeg(u_delta); // rad to deg
 
     // 输出限制
     if (u_angle > self.max_delta)
