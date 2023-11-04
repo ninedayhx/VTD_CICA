@@ -75,15 +75,12 @@ int main(int argc, char **argv)
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
     // clang-format on
-    cout << "test" << endl;
 
     mpc_lon = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
                                80, 2, 3);
-
-    cout << "test" << endl;
 
     ros::init(argc, argv, "test_ctrl_node");
     ros::NodeHandle nh;
@@ -97,8 +94,6 @@ int main(int argc, char **argv)
     controller = nh.createTimer(ros::Duration(0.01), controller_callback);
 
     start_time = std::chrono::steady_clock::now();
-
-    cout << "test" << endl;
 
     LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);

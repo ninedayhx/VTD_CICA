@@ -404,8 +404,6 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     }
     else
     {
-        std::cout << "soft " << std::endl;
-
         if (!solver.updateGradient(grad_s))
         {
             std::cout << "update grad err" << std::endl;

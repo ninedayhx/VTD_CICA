@@ -345,7 +345,7 @@ void control_t::is_lane_changing()
             {
                 self.start_follow = 1;
                 leader.lane = 2;
-                std::cout << "rel_ang" << radTodeg(lane_leader_rel_ang) << std::endl;
+                // std::cout << "rel_ang" << radTodeg(lane_leader_rel_ang) << std::endl;
             }
             else if (radTodeg(lane_leader_rel_ang) <= 3)
             {
