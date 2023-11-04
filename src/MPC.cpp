@@ -129,34 +129,6 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
 
     std::cout << " MPC n: " << n << " m: " << m << " Np: " << Np << std::endl;
 
-    L.resize(4 * Np * m, Np * m);
-    EMXd L_tmp, I, G;
-    I.setIdentity(Np * m, Np * m);
-    G.setZero(Np * m, Np * m);
-    G.block(m, 0, (Np - 1) * m, (Np - 1) * m).setIdentity((Np - 1) * m, (Np - 1) * m);
-    L_tmp.resize(4 * Np * m, Np * m);
-    L_tmp << I, -I, I - G, G - I;
-    L = L_tmp.sparseView();
-
-    LB.resize(4 * Np * m);
-    LB = -OsqpEigen::INFTY * LB.setOnes();
-
-    UB.resize(4 * Np * m);
-
-    U_max.resize(Np * m, 1);
-    U_max = u_max * U_max.setOnes();
-
-    U_min.resize(Np * m, 1);
-    U_min = u_min * U_min.setOnes();
-
-    dU_max.resize(Np * m, 1);
-    dU_max = du_max * dU_max.setOnes();
-
-    u_last.resize(m, 1);
-
-    W.resize(Np * m, m);
-    W.block(0, 0, m, m).setIdentity(m, m);
-
     _H.resize(m * Np, m * Np);
     grad.resize(m * Np);
 
@@ -165,9 +137,49 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
     augmenting_R(R);
     compute_Hessian();
 
+    L.resize(4 * Np * m + 2 * Np, Np * m);
+
+    EMXd L_tmp, I, G;
+    I.setIdentity(Np * m, Np * m);
+    G.setZero(Np * m, Np * m);
+    G.block(m, 0, (Np - 1) * m, (Np - 1) * m).setIdentity((Np - 1) * m, (Np - 1) * m);
+
+    E.resize(Np, Np * n);
+    E.setZero();
+    for (int i = 0; i < Np; i++)
+    {
+        E(i, i * n) = 1;
+    }
+
+    L_tmp.resize(4 * Np * m + 2 * Np, Np * m);
+    L_tmp << I, -I, I - G, G - I, E * _B, -E * _B;
+    L = L_tmp.sparseView();
+
+    // constrict
+    LB.resize(4 * Np * m + 2 * Np);
+    LB = -OsqpEigen::INFTY * LB.setOnes();
+
+    UB.resize(4 * Np * m + 2 * Np);
+
+    U_max.resize(Np * m);
+    U_max = u_max * U_max.setOnes();
+
+    U_min.resize(Np * m);
+    U_min = u_min * U_min.setOnes();
+
+    dU_max.resize(Np * m);
+    dU_max = du_max * dU_max.setOnes();
+
+    W.resize(Np * m, m);
+    W.block(0, 0, m, m).setIdentity(m, m);
+
+    u_last.resize(m);
+    u_apply.resize(m);
+    U_solve.resize(m * Np);
+
     // 求解器设置
     solver.settings()->setWarmStart(true);
-    solver.settings()->setVerbosity(false);
+    // solver.settings()->setVerbosity(false);
 
     solver.data()->setNumberOfVariables(_H.cols());
     solver.data()->setNumberOfConstraints(L.rows());
@@ -201,6 +213,8 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
     // _A,_B,_Q,_R,_H,C are only determined by init value
     // D determined by u_last
     // grad determined by x(k|k)
+
+    // init
 }
 
 void MPC_t::discrete(EMXd A, EMXd B, int type)
@@ -292,13 +306,6 @@ void MPC_t::compute_gradient(EMXd x_k)
 
 bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
 {
-    // 求解器设置
-    // 热启动：采用相关或简化问题的最优解来作为原问题的初值，提高求解速度和精度
-    solver.settings()->setWarmStart(true);
-
-    // 求解器变量和约束设置
-    // 待求解变量个数
-    solver.data()->setNumberOfVariables(m * Np);
 }
 
 /**
@@ -327,7 +334,7 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k)
     switch (err_flag)
     {
     case OsqpEigen::ErrorExitFlag::NoError:
-        std::cout << "solver ok" << std::endl;
+        // std::cout << "solver ok" << std::endl;
         break;
     case OsqpEigen::ErrorExitFlag::DataValidationError:
         std::cout << "DataValidationError" << std::endl;
@@ -363,32 +370,43 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k)
     u_apply = U_solve.block(0, 0, m, 1);
     u_last = u_apply;
 
-    // #ifdef MPC_LOG
+#ifdef MPC_LOG
     std::cout << "U_solve" << std::endl
               << U_solve << std::endl;
-    // #endif
+#endif
 
     return true;
 }
 
-void MPC_follow_t::compute_inequality_constraints()
+void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v)
 {
-    UB.resize(4 * Np * m, 1);
+    UB.resize(4 * Np * m + 2 * Np);
+
+    EVXd one;
+    one.resize(Np);
+    one = one.setOnes();
+    V_self.resize(Np);
+    V_self = v * V_self.setOnes();
+
     UB << U_max,
         -U_min,
         dU_max + W * u_last,
-        dU_max - W * u_last;
+        dU_max - W * u_last,
+        1.5 * one + 0.45 * V_self - E * _A * xk,
+        2.5 * one + 0.75 * V_self + E * _A * xk;
+
 #ifdef MPC_LOG
-    std::cout << "U_max:" << std::endl
-              << U_max << std::endl
-              << "U_min:" << std::endl
-              << U_min << std::endl
-              << "dU_max:" << std::endl
-              << dU_max << std::endl
-              << "W:" << std::endl
-              << W << std::endl
-              << "u_last:" << std::endl
-              << u_last << std::endl;
+    std::cout
+        << "U_max:" << std::endl
+        << U_max << std::endl
+        << "U_min:" << std::endl
+        << U_min << std::endl
+        << "dU_max:" << std::endl
+        << dU_max << std::endl
+        << "W:" << std::endl
+        << W << std::endl
+        << "u_last:" << std::endl
+        << u_last << std::endl;
     std::cout << "UB:" << std::endl
               << UB << std::endl;
 #endif

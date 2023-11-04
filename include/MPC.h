@@ -67,15 +67,15 @@ public:
 class MPC_follow_t : public MPC_t
 {
 public:
-    const double du_max = 0.04; // u最大增量
+    const double du_max = 0.08; // u最大增量
     const double u_max = 3;     // u上界约束
     const double u_min = -5;    // u下界约束
-    EVXd U_max, U_min, dU_max;
+    EVXd U_max, U_min, dU_max, V_self;
 
-    EMXd W;
+    EMXd W, E;
 
     MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_);
-    void compute_inequality_constraints();
+    void compute_inequality_constraints(EVXd xk, double v);
 };
 
 #endif

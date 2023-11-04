@@ -32,7 +32,7 @@ void LQR::get_param(Eigen::MatrixXf _Q, Eigen::MatrixXf _R, float ts)
     R = _R;
     TS = ts;
     tolerance = 1e-6;
-    max_num_iteration = 1000;
+    max_num_iteration = 10000;
 }
 
 void LQR::discrete(Eigen::MatrixXf &_A, Eigen::MatrixXf &_B, int type)

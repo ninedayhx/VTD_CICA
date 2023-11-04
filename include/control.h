@@ -168,7 +168,7 @@ public:
     LTI follow_leader_mod;
     LTI follow_du_mod;
 
-    Eigen::VectorXd x_k;
+    Eigen::VectorXf x_k;
 
     float lon_v_des;
     float lon_a_des;

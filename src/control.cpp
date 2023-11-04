@@ -54,6 +54,9 @@ control_t::control_t()
                         1;
     // clang-format on
     x_k.resize(3);
+
+    self.L_des = 0;
+    leader.line_len = 0;
 }
 
 /***********************************************/
@@ -462,14 +465,14 @@ float control_t::leader_follow_LQR_control(LQR _lqr)
 {
     static int follow_flag = 0;
 
-    self.L_des = 5 + 1.5 * self.v_x;
+    // self.L_des = 5 + 1.5 * self.v_x;
 
-    float dx = leader.line_len - self.L_des;
-    float dv = leader.v_x - self.v_x;
-    float da = leader.a_x - self.a_x;
+    // float dx = leader.line_len - self.L_des;
+    // float dv = leader.v_x - self.v_x;
+    // float da = leader.a_x - self.a_x;
 
-    // float a_des = -(_lqr.K(0, 0) * x_k(0) + _lqr.K(0, 1) * x_k(1) + _lqr.K(0, 2) * x_k(2));
-    float a_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da);
+    float a_des = -(_lqr.K(0, 0) * x_k(0) + _lqr.K(0, 1) * x_k(1) + _lqr.K(0, 2) * x_k(2));
+    // float a_des = -(_lqr.K(0, 0) * dx + _lqr.K(0, 1) * dv + _lqr.K(0, 2) * da);
 
     if (a_des >= 5.4)
     {
@@ -523,7 +526,7 @@ void control_t::update_state_vec()
 {
     self.L_des = 5 + 1.5 * self.v_x;
 
-    x_k(0) = (double)(leader.line_len - self.L_des);
-    x_k(1) = (double)(leader.v_x - self.v_x);
-    x_k(2) = (double)(leader.a_x - self.a_x);
+    x_k(0) = leader.line_len - self.L_des;
+    x_k(1) = leader.v_x - self.v_x;
+    x_k(2) = leader.a_x - self.a_x;
 }
