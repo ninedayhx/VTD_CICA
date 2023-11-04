@@ -1,13 +1,13 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 project(test_ctrl)
 message(STATUS "authur:ninedayhx")
 message(STATUS "email:1170535490@qq.com")
 
-IF(NOT CMAKE_BUILD_TYPE)
-    SET(CMAKE_BUILD_TYPE Debug)      
-ENDIF()
+# IF(NOT CMAKE_BUILD_TYPE)
+#     SET(CMAKE_BUILD_TYPE Debug)      
+# ENDIF()
 
-message("Build type: " ${CMAKE_BUILD_TYPE}) 
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}") 
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 include(CheckCXXCompilerFlag) 
@@ -42,7 +42,8 @@ COMPONENTS
 	${CATKIN_DEPENDS}
 )
 find_package(Eigen3 REQUIRED)
-
+# find_package(osqp REQUIRED)
+# find_package(OsqpEigen REQUIRED)
 
 
 # generate_dynamic_reconfigure_options(cfg/config.cfg) 
@@ -165,7 +166,18 @@ include_directories(
 	include
 	${catkin_INCLUDE_DIRS}
 	${EIGEN3_INCLUDE_DIR}
+	# ${PROJECT_SOURCE_DIR}/thirdparty/osqp/include
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp/include/osqp
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/include
+	# /usr/local/include/OsqpEigen
+	# /usr/local/include/osqp
+	# /usr/local/share/osqp/codegen_files/inc/private
 )
+link_directories (
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib
+)
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -184,11 +196,14 @@ add_executable(${PROJECT_NAME}_node
 	src/test_ctrl_node.cpp
 	src/control.cpp
 	src/LQR.cpp
+	src/MPC.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_node
 	${catkin_LIBRARIES}
 	${EIGEN3_LIBS}
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib/libosqp.so
 )
 
 add_executable(score
