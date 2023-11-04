@@ -179,15 +179,11 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
-    std::cout << "test111111111111" << std::endl;
-
     H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
     grad_s.resize(grad.rows() + sc_num);
     L_s.resize(L.rows() + sc_num, L.cols() + sc_num);
     LB_s.resize(LB.rows() + sc_num);
     UB_s.resize(UB.rows() + sc_num);
-
-    std::cout << "test111111111111" << std::endl;
 
     if (constraint_type == 1)
     {
@@ -197,15 +193,10 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     {
 
         compute_Hessian_with_slack(sc_num);
-        std::cout << "test111111111111" << std::endl;
-
         LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
-        std::cout << "test111111111111" << std::endl;
-
         compute_Linear_mat_with_slack(sc_num);
-        std::cout << "test111111111111" << std::endl;
 
-        solver_init(H_s, grad_s, LB_s, UB_s, L_s, true);
+        solver_init(H_s, grad_s, LB_s, UB_s, L_s, false);
     }
 #ifdef MPC_LOG
     std::cout << "_A" << std::endl

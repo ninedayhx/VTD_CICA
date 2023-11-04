@@ -3,9 +3,9 @@ project(test_ctrl)
 message(STATUS "authur:ninedayhx")
 message(STATUS "email:1170535490@qq.com")
 
-IF(NOT CMAKE_BUILD_TYPE)
-    SET(CMAKE_BUILD_TYPE Debug)      
-ENDIF()
+# IF(NOT CMAKE_BUILD_TYPE)
+#     SET(CMAKE_BUILD_TYPE Debug)      
+# ENDIF()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}") 
 
