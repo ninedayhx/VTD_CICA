@@ -341,12 +341,13 @@ void control_t::is_lane_changing()
         else
         {
             // 通过前车和车道线的夹角，预先跟踪前车
-            if (radTodeg(lane_leader_rel_ang) > 2) // deg
+            if (radTodeg(lane_leader_rel_ang) > 3) // deg
             {
                 self.start_follow = 1;
                 leader.lane = 2;
+                std::cout << "rel_ang" << radTodeg(lane_leader_rel_ang) << std::endl;
             }
-            else if (radTodeg(lane_leader_rel_ang) <= 2)
+            else if (radTodeg(lane_leader_rel_ang) <= 3)
             {
                 self.start_follow = 0;
                 leader.lane = 2;
@@ -364,12 +365,12 @@ void control_t::is_lane_changing()
         }
         else
         {
-            if (radTodeg(lane_leader_rel_ang) < -2) // deg
+            if (radTodeg(lane_leader_rel_ang) < -3) // deg
             {
                 self.start_follow = 1;
                 leader.lane = 1;
             }
-            else if (radTodeg(lane_leader_rel_ang) >= -2)
+            else if (radTodeg(lane_leader_rel_ang) >= -3)
             {
                 self.start_follow = 0;
                 leader.lane = 1;
