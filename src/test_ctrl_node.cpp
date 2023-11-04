@@ -75,11 +75,13 @@ int main(int argc, char **argv)
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
     // clang-format on
+    cout << "test" << endl;
+
     mpc_lon = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
-                               100);
+                               80, 2, 3);
 
     cout << "test" << endl;
 
@@ -136,9 +138,9 @@ void controller_callback(const ros::TimerEvent &e)
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
-        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x);
+        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true);
 
-        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>()))
+        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
         {
             cout << "mpc solve fault" << endl;
         }

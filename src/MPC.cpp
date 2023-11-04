@@ -82,8 +82,10 @@
  * @param Q
  * @param R
  * @param Np_
+ * @param constraint_type   1 for hard constraint
+ *                          2 for soft constraint
  */
-MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
+MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num)
 {
     Np = Np_;
 
@@ -177,26 +179,34 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
-    // 求解器设置
-    solver.settings()->setWarmStart(true);
-    // solver.settings()->setVerbosity(false);
+    std::cout << "test111111111111" << std::endl;
 
-    solver.data()->setNumberOfVariables(_H.cols());
-    solver.data()->setNumberOfConstraints(L.rows());
-    if (!solver.data()->setHessianMatrix(_H))
-        return;
-    if (!solver.data()->setLinearConstraintsMatrix(L))
-        return;
-    if (!solver.data()->setLowerBound(LB))
-        return;
-    if (!solver.data()->setGradient(grad))
-        return;
-    if (!solver.data()->setUpperBound(UB))
-        return;
+    H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
+    grad_s.resize(grad.rows() + sc_num);
+    L_s.resize(L.rows() + sc_num, L.cols() + sc_num);
+    LB_s.resize(LB.rows() + sc_num);
+    UB_s.resize(UB.rows() + sc_num);
 
-    if (!solver.initSolver())
-        return;
+    std::cout << "test111111111111" << std::endl;
 
+    if (constraint_type == 1)
+    {
+        solver_init(_H, grad, LB, UB, L, false);
+    }
+    else if (constraint_type == 2)
+    {
+
+        compute_Hessian_with_slack(sc_num);
+        std::cout << "test111111111111" << std::endl;
+
+        LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
+        std::cout << "test111111111111" << std::endl;
+
+        compute_Linear_mat_with_slack(sc_num);
+        std::cout << "test111111111111" << std::endl;
+
+        solver_init(H_s, grad_s, LB_s, UB_s, L_s, true);
+    }
 #ifdef MPC_LOG
     std::cout << "_A" << std::endl
               << _A << std::endl
@@ -215,6 +225,34 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_)
     // grad determined by x(k|k)
 
     // init
+}
+
+bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log)
+{
+    solver.settings()->setWarmStart(true);
+    solver.settings()->setVerbosity(is_log);
+
+    if (solver.data()->isSet())
+    {
+        solver.data()->clearHessianMatrix();
+        solver.data()->clearLinearConstraintsMatrix();
+    }
+
+    solver.data()->setNumberOfVariables(h.cols());
+    solver.data()->setNumberOfConstraints(l.rows());
+    if (!solver.data()->setHessianMatrix(h))
+        return false;
+    if (!solver.data()->setLinearConstraintsMatrix(l))
+        return false;
+    if (!solver.data()->setLowerBound(lb))
+        return false;
+    if (!solver.data()->setGradient(grad_))
+        return false;
+    if (!solver.data()->setUpperBound(ub))
+        return false;
+
+    if (!solver.initSolver())
+        return false;
 }
 
 void MPC_t::discrete(EMXd A, EMXd B, int type)
@@ -291,6 +329,21 @@ void MPC_t::compute_Hessian()
     _H = H_d.sparseView();
 }
 
+void MPC_t::compute_Hessian_with_slack(int sc_num)
+{
+    EMXd H_d, diag_rho; // dense mat of Hessian
+    diag_rho.resize(sc_num, sc_num);
+    for (int i = 0; i < sc_num; i++)
+    {
+        diag_rho(i, i) = rho[i];
+    }
+    H_d.resize(H_s.rows(), H_s.cols());
+    H_d.setZero();
+    H_d.block(0, 0, _H.rows(), _H.cols()) = _B.transpose() * _Q * _B + _R;
+    H_d.block(_H.rows(), _H.cols(), sc_num, sc_num) = diag_rho;
+    H_s = H_d.sparseView();
+}
+
 void MPC_t::compute_gradient(EMXd x_k)
 {
     if (x_k.rows() != n)
@@ -302,6 +355,33 @@ void MPC_t::compute_gradient(EMXd x_k)
     // std::cout << " _F " << std::endl
     //   << _F << std::endl;
     grad = _F * x_k;
+    grad_s.setZero();
+    grad_s.block(0, 0, grad.rows(), grad.cols()) = grad;
+}
+
+void MPC_t::compute_Linear_mat_with_slack(int sc_num)
+{
+    EMXd tmp, ident, tmp_uf;
+    tmp.resize(L.rows() + sc_num, L.cols() + sc_num);
+    tmp.setZero();
+    tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
+
+    ident.setIdentity(sc_num, sc_num);
+
+    EVXd one_2m(2 * m), one_2np(2 * Np);
+    one_2m.setOnes();
+    one_2np.setOnes();
+
+    tmp_uf.resize(L.rows(), sc_num);
+    tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
+    tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    tmp_uf.block(4 * m, 2, 2 * Np, 1) = one_2np;
+
+    tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
+    tmp.block(0, L.cols(), L.rows(), sc_num) = tmp_uf;
+    tmp.block(L.rows(), L.cols(), sc_num, sc_num) = ident;
+
+    L_s = tmp.sparseView();
 }
 
 bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
@@ -315,19 +395,36 @@ bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
  * @return true
  * @return false
  */
-bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k)
+bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
 {
     compute_gradient(x_k);
-
-    if (!solver.updateGradient(grad))
+    if (!is_soft)
     {
-        std::cout << "update grad err" << std::endl;
-        return false;
+        if (!solver.updateGradient(grad))
+        {
+            std::cout << "update grad err" << std::endl;
+            return false;
+        }
+        if (!solver.updateUpperBound(UB))
+        {
+            std::cout << "update UB err" << std::endl;
+            return false;
+        }
     }
-    if (!solver.updateUpperBound(UB))
+    else
     {
-        std::cout << "update UB err" << std::endl;
-        return false;
+        std::cout << "soft " << std::endl;
+
+        if (!solver.updateGradient(grad_s))
+        {
+            std::cout << "update grad err" << std::endl;
+            return false;
+        }
+        if (!solver.updateUpperBound(UB_s))
+        {
+            std::cout << "update UB err" << std::endl;
+            return false;
+        }
     }
 
     OsqpEigen::ErrorExitFlag err_flag = solver.solveProblem();
@@ -378,7 +475,7 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k)
     return true;
 }
 
-void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v)
+void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_soft)
 {
     UB.resize(4 * Np * m + 2 * Np);
 
@@ -395,6 +492,9 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v)
         1.5 * one + 0.45 * V_self - E * _A * xk,
         2.5 * one + 0.75 * V_self + E * _A * xk;
 
+    UB_s.setZero();
+    UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;
+
 #ifdef MPC_LOG
     std::cout
         << "U_max:" << std::endl
@@ -410,4 +510,8 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v)
     std::cout << "UB:" << std::endl
               << UB << std::endl;
 #endif
+}
+
+void MPC_follow_t::add_soft_constraint()
+{
 }
