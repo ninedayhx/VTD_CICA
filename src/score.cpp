@@ -138,7 +138,7 @@ void car_obs_t::sample_data()
     {
         follow_coef = (leader.line_len - dis_des) / dis_des;
 
-        if (follow_flag == 0 && self.v_x > 0.6 * leader.v_x && self.v_x < 1.4 * leader.v_x)
+        if (follow_flag == 0 && self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
         {
             follow_flag = 1;
         }
