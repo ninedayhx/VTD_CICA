@@ -50,7 +50,7 @@ public:
     float a_y_last; //
     float j_x;      //
     float j_y;      //
-    int lane;       // 处于哪个车道
+    int lane;       // 处于哪个车道 1 left 2 right
 
     bool is_stopped();
 };
@@ -74,6 +74,7 @@ private:
     /* data */
 public:
     common_msgs::Perceptionobjects data_raw;
+    std::vector<common_msgs::Perceptionobject> car;
     void update(const common_msgs::Perceptionobjects &msg);
 };
 
@@ -162,6 +163,7 @@ class control_t
 public:
     car_self self;
     leader_t leader;
+    std::vector<common_msgs::Perceptionobject> car_cur;
     obtacle obt;
     lane_param lane;
 
@@ -177,10 +179,11 @@ public:
     control_t();
 
     void leader_update();
-    void is_cutinto();
+    void is_lane_changing();
+    int is_cutinto(common_msgs::Perceptionobject _car);
     void is_cutout();
     int find_the_latest(std::vector<common_msgs::Perceptionobject> _car);
-    void find_current_lane_car(float dis, std::vector<common_msgs::Perceptionobject> _car);
+    std::vector<common_msgs::Perceptionobject> find_current_lane_car(std::vector<common_msgs::Perceptionobject> _car);
     void update_state_vec();
 
     common_msgs::Control_Test lon_speed_control(float speed_des);

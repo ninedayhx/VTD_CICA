@@ -26,6 +26,9 @@
 #include "control.h"
 #include "matplotlibcpp.h"
 
+// #define SCORE_LOG
+// #define PLOT_LOG
+
 using namespace std;
 namespace plt = matplotlibcpp;
 
@@ -57,6 +60,7 @@ chrono::_V2::steady_clock::time_point start_time;
 car_obs_t car_obs;
 vector<float> visy, plotx0, plotx1, plotx2, plotx3;
 long fig1 = plt::figure();
+int plotnum;
 
 ros::Subscriber location_sub;
 ros::Subscriber obstacle_sub;
@@ -70,13 +74,14 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
-    visy.resize(500);
-    plotx0.resize(500);
-    plotx1.resize(500);
-    plotx2.resize(500);
-    plotx3.resize(500);
+    plotnum = 500;
+    visy.resize(plotnum);
+    plotx0.resize(plotnum);
+    plotx1.resize(plotnum);
+    plotx2.resize(plotnum);
+    plotx3.resize(plotnum);
 
-    for (int i = 0; i < 500; i++)
+    for (int i = 0; i < plotnum; i++)
     {
         visy[i] = (float)i * 0.1;
     }
@@ -126,23 +131,38 @@ void observe_callback(const ros::TimerEvent &e)
     {
         car_obs.compute_score();
     }
-
+#ifdef PLOT_LOG
     // 可视化当前车道线
-    for (int i = 0; i < 500; i++)
+    for (int i = 0; i < plotnum; i++)
     {
-        plotx0[i] = -car_obs.lane.compute_lane_y(visy[i], 0);
-        plotx1[i] = -car_obs.lane.compute_lane_y(visy[i], 1);
-        plotx2[i] = -car_obs.lane.compute_lane_y(visy[i], 2);
-        plotx3[i] = -car_obs.lane.compute_lane_y(visy[i], 3);
+        plotx0[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 0);
+        plotx1[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 1);
+        plotx2[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 2);
+        plotx3[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 3);
     }
     plt::clf();
     plt::plot(plotx0, visy);
     plt::plot(plotx1, visy);
     plt::plot(plotx2, visy);
     plt::plot(plotx3, visy);
-
+    vector<float> dotx, doty;
+    dotx.resize(1);
+    doty.resize(1);
+    for (int i = 0; i < car_obs.obt.car.size(); i++)
+    {
+        dotx[0] = -car_obs.obt.car[i].y;
+        doty[0] = car_obs.obt.car[i].x - car_obs.lane.car_front_len;
+        // cout << "(x,y) == " << dotx[i] << "," << doty[i] << endl;
+        if (doty[0] > 0 && doty[0] < 50)
+        {
+            plt::scatter(dotx, doty);
+        }
+    }
     plt::xlim(-25, 25);
+    plt::ylim(-1, 50);
+
     plt::pause(0.01);
+#endif
 }
 
 void car_obs_t::sample_data()
@@ -188,12 +208,13 @@ void car_obs_t::sample_data()
             }
         }
     }
-
+#ifdef SCORE_LOG
     std::cout << " ax_c: " << ax_cnt
               << " ay_c: " << ay_cnt
               << " jx_c: " << jx_cnt
               << " jy_c: " << jy_cnt
               << " ni_f: " << not_idea_cnt << std::endl;
+#endif
 }
 
 void car_obs_t::compute_score()

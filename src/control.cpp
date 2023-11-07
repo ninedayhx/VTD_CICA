@@ -196,6 +196,14 @@ bool car_self::is_in_destination()
 void obtacle::update(const common_msgs::Perceptionobjects &msg)
 {
     data_raw = msg;
+    car.clear();
+    for (int i = 0; i < data_raw.num; i++)
+    {
+        if (data_raw.Perceptionobjects[i].type == 1) // car
+        {
+            car.push_back(data_raw.Perceptionobjects[i]);
+        }
+    }
 }
 
 /***********************************************/
@@ -298,35 +306,33 @@ double lane_param::line_func(float *c, float x)
 
 void control_t::leader_update()
 {
-    std::vector<common_msgs::Perceptionobject> car;
-    for (int i = 0; i < obt.data_raw.num; i++)
-    {
-        if (obt.data_raw.Perceptionobjects[i].type == 1) // car
-        {
-            car.push_back(obt.data_raw.Perceptionobjects[i]);
-        }
-    }
-
-    int car_num = car.size();
+    int car_num = obt.car.size();
     if (car_num == 0)
     {
         std::cout << "no leader car" << std::endl;
     }
     if (car_num == 1)
     {
-        leader.update(car[0], lane, self);
-        is_cutinto();
+        leader.update(obt.car[0], lane, self);
+        is_lane_changing();
     }
     if (car_num > 1)
     {
-        std::cout << "car num:" << car_num << std::endl;
+        // std::cout << "car num:" << car_num << std::endl;
         // 如果当前车道前30米无车，且侧道30内有车，切换侧道里将要变道的车作为leader
         // 前方有车，跟车，跟车过程中，被跟车切出，则找到当前车道第二远的车作为leader车
-        find_the_latest(car);
+        car_cur = find_current_lane_car(obt.car);
+        // std::cout << "stttt" << car_cur.size() << std::endl;
+        int itr = find_the_latest(car_cur);
+        // std::cout << "itr :" << itr << std::endl;
+        if (itr >= 0 && self.start_follow == 1)
+        {
+            leader.update(car_cur[itr], lane, self);
+        }
     }
 }
 
-void control_t::is_cutinto()
+void control_t::is_lane_changing()
 {
     float lane_y = 0;
     float lane_leader_abs_ang = atan(lane.compute_lane_rel_angle(leader.d_x, 1)) + self.phi; // rad
@@ -343,13 +349,12 @@ void control_t::is_cutinto()
         else
         {
             // 通过前车和车道线的夹角，预先跟踪前车
-            if (radTodeg(lane_leader_rel_ang) > 3) // deg
+            if (radTodeg(lane_leader_rel_ang) > 2) // deg
             {
                 self.start_follow = 1;
                 leader.lane = 2;
-                // std::cout << "rel_ang" << radTodeg(lane_leader_rel_ang) << std::endl;
             }
-            else if (radTodeg(lane_leader_rel_ang) <= 3)
+            else if (radTodeg(lane_leader_rel_ang) <= 2)
             {
                 self.start_follow = 0;
                 leader.lane = 2;
@@ -367,12 +372,12 @@ void control_t::is_cutinto()
         }
         else
         {
-            if (radTodeg(lane_leader_rel_ang) < -3) // deg
+            if (radTodeg(lane_leader_rel_ang) < -2) // deg
             {
                 self.start_follow = 1;
                 leader.lane = 1;
             }
-            else if (radTodeg(lane_leader_rel_ang) >= -3)
+            else if (radTodeg(lane_leader_rel_ang) >= -2)
             {
                 self.start_follow = 0;
                 leader.lane = 1;
@@ -385,6 +390,58 @@ void control_t::is_cutinto()
     }
 }
 
+int control_t::is_cutinto(common_msgs::Perceptionobject _car)
+{
+    float lane_y = 0;
+    float car_abs_ang = atan(lane.compute_lane_rel_angle(_car.x, 1)) + self.phi; // rad
+    float car_rel_ang = _car.heading - car_abs_ang;                              // rad
+
+    if (lane.lane_locate == 1)
+    {
+        lane_y = lane.compute_lane_y(_car.x, 2);
+        if (leader.d_y >= lane_y)
+        {
+            return 0;
+        }
+        else
+        {
+            // 通过前车和车道线的夹角，预先跟踪前车
+            if (radTodeg(car_rel_ang) > 3) // deg
+            {
+                return 2;
+            }
+            else if (radTodeg(car_rel_ang) <= 3)
+            {
+                return 1;
+            }
+        }
+    }
+    else if (lane.lane_locate == 2)
+    {
+        lane_y = lane.compute_lane_y(leader.d_x, 1);
+        if (leader.d_y <= lane_y)
+        {
+            return 0;
+        }
+        else
+        {
+            if (radTodeg(car_rel_ang) < -3) // deg
+            {
+                return 2;
+            }
+            else if (radTodeg(car_rel_ang) >= -3)
+            {
+                return 1;
+            }
+        }
+    }
+    else
+    {
+        std::cout << "leader lane err" << std::endl;
+        return -1;
+    }
+}
+
 void control_t::is_cutout()
 {
 }
@@ -392,20 +449,67 @@ void control_t::is_cutout()
 int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
 {
     int num = _car.size();
+    if (num <= 0)
+    {
+        self.start_follow = 0;
+        return -1;
+    }
     int p = 0;
     float tmp = 0;
     std::vector<float> line_dis;
     line_dis.resize(num);
     for (int i = 0; i < num; i++)
     {
-        line_dis[i] = lane.compute_line_length(_car[i].x, lane.car_front_len);
+        // line_dis[i] = lane.compute_line_length(_car[i].x, lane.car_front_len);
+        line_dis[i] = pow(_car[i].x * _car[i].x + _car[i].y * _car[i].y, 0.5); // 绝对距离效果好
+        // std::cout << "dasfgasdfa" << line_dis[i] << std::endl;
     }
     auto minPos = std::min_element(line_dis.begin(), line_dis.end());
-    return minPos - line_dis.begin();
+    if (line_dis[minPos - line_dis.begin()] < 25 && line_dis[minPos - line_dis.begin()] > 2.5)
+    {
+        self.start_follow = 1;
+        return minPos - line_dis.begin();
+    }
+    else
+    {
+        self.start_follow = 0;
+        return -1;
+    }
 }
 
-void control_t::find_current_lane_car(float dis, std::vector<common_msgs::Perceptionobject> _car)
+std::vector<common_msgs::Perceptionobject> control_t::find_current_lane_car(std::vector<common_msgs::Perceptionobject> _car)
 {
+    // float dis_y = lane.compute_lane_y(dis + lane.car_front_len, 1);
+    // float dis_k = lane.compute_lane_rel_angle(dis + lane.car_front_len, 1);
+    int car_num = _car.size();
+    float lane_y = 0;
+    std::vector<common_msgs::Perceptionobject> tmp;
+    for (int i = 0; i < car_num; i++)
+    {
+        if (self.lane == 1)
+        {
+            lane_y = lane.compute_lane_y(_car[i].x, 2);
+            if (lane_y <= _car[i].y && _car[i].x > lane.car_front_len)
+            {
+                tmp.push_back(_car[i]);
+                // std::cout << "cur" << _car[i].x << std::endl;
+            }
+        }
+        else if (self.lane == 2)
+        {
+            lane_y = lane.compute_lane_y(_car[i].x, 1);
+            if (lane_y >= _car[i].y && _car[i].x > lane.car_front_len)
+            {
+                tmp.push_back(_car[i]);
+            }
+        }
+        else
+        {
+            std::cout << "find_current_lane_car: err lane" << std::endl;
+        }
+    }
+    // std::cout << "car_curnum: " << tmp.size() << std::endl;
+    return tmp;
 }
 
 /**
