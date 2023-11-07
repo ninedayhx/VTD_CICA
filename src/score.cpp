@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "ros/ros.h"
 
@@ -23,8 +24,13 @@
 #include "common_msgs/Perceptionobjects.h"
 
 #include "control.h"
+#include "matplotlibcpp.h"
+
+// #define SCORE_LOG
+// #define PLOT_LOG
 
 using namespace std;
+namespace plt = matplotlibcpp;
 
 class car_obs_t : public control_t
 {
@@ -52,6 +58,9 @@ car_obs_t::car_obs_t()
 chrono::_V2::steady_clock::time_point start_time;
 
 car_obs_t car_obs;
+vector<float> visy, plotx0, plotx1, plotx2, plotx3;
+long fig1 = plt::figure();
+int plotnum;
 
 ros::Subscriber location_sub;
 ros::Subscriber obstacle_sub;
@@ -65,6 +74,18 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
+    plotnum = 500;
+    visy.resize(plotnum);
+    plotx0.resize(plotnum);
+    plotx1.resize(plotnum);
+    plotx2.resize(plotnum);
+    plotx3.resize(plotnum);
+
+    for (int i = 0; i < plotnum; i++)
+    {
+        visy[i] = (float)i * 0.1;
+    }
+
     ros::init(argc, argv, "compute");
     ros::NodeHandle nh;
 
@@ -110,6 +131,38 @@ void observe_callback(const ros::TimerEvent &e)
     {
         car_obs.compute_score();
     }
+#ifdef PLOT_LOG
+    // 可视化当前车道线
+    for (int i = 0; i < plotnum; i++)
+    {
+        plotx0[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 0);
+        plotx1[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 1);
+        plotx2[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 2);
+        plotx3[i] = -car_obs.lane.compute_lane_y(visy[i] + car_obs.lane.car_front_len, 3);
+    }
+    plt::clf();
+    plt::plot(plotx0, visy);
+    plt::plot(plotx1, visy);
+    plt::plot(plotx2, visy);
+    plt::plot(plotx3, visy);
+    vector<float> dotx, doty;
+    dotx.resize(1);
+    doty.resize(1);
+    for (int i = 0; i < car_obs.obt.car.size(); i++)
+    {
+        dotx[0] = -car_obs.obt.car[i].y;
+        doty[0] = car_obs.obt.car[i].x - car_obs.lane.car_front_len;
+        // cout << "(x,y) == " << dotx[i] << "," << doty[i] << endl;
+        if (doty[0] > 0 && doty[0] < 50)
+        {
+            plt::scatter(dotx, doty);
+        }
+    }
+    plt::xlim(-25, 25);
+    plt::ylim(-1, 50);
+
+    plt::pause(0.01);
+#endif
 }
 
 void car_obs_t::sample_data()
@@ -134,30 +187,34 @@ void car_obs_t::sample_data()
         jy_cnt++;
     }
 
-    follow_coef = (leader.line_len - dis_des) / dis_des;
-
-    if (follow_flag == 0 && self.v_x > 0.6 * leader.v_x && self.v_x < 1.4 * leader.v_x)
+    if (self.start_follow)
     {
-        follow_flag = 1;
-    }
-    if (follow_flag == 1)
-    {
-        follow_frame_sum++;
-        if (follow_coef <= -0.5 || follow_coef >= 0.3)
-        {
-            not_idea_cnt++;
-        }
-        if (follow_coef <= -0.65 || follow_coef >= 0.6)
-        {
-            is_complete = 0;
-        }
-    }
+        follow_coef = (leader.line_len - dis_des) / dis_des;
 
+        if (follow_flag == 0 && self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
+        {
+            follow_flag = 1;
+        }
+        if (follow_flag == 1)
+        {
+            follow_frame_sum++;
+            if (follow_coef <= -0.5 || follow_coef >= 0.3)
+            {
+                not_idea_cnt++;
+            }
+            if (follow_coef <= -0.65 || follow_coef >= 0.6)
+            {
+                is_complete = 0;
+            }
+        }
+    }
+#ifdef SCORE_LOG
     std::cout << " ax_c: " << ax_cnt
               << " ay_c: " << ay_cnt
               << " jx_c: " << jx_cnt
               << " jy_c: " << jy_cnt
               << " ni_f: " << not_idea_cnt << std::endl;
+#endif
 }
 
 void car_obs_t::compute_score()
