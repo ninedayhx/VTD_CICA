@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "ros/ros.h"
 
@@ -23,8 +24,10 @@
 #include "common_msgs/Perceptionobjects.h"
 
 #include "control.h"
+#include "matplotlibcpp.h"
 
 using namespace std;
+namespace plt = matplotlibcpp;
 
 class car_obs_t : public control_t
 {
@@ -52,6 +55,8 @@ car_obs_t::car_obs_t()
 chrono::_V2::steady_clock::time_point start_time;
 
 car_obs_t car_obs;
+vector<float> visy, plotx0, plotx1, plotx2, plotx3;
+long fig1 = plt::figure();
 
 ros::Subscriber location_sub;
 ros::Subscriber obstacle_sub;
@@ -65,6 +70,17 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
+    visy.resize(500);
+    plotx0.resize(500);
+    plotx1.resize(500);
+    plotx2.resize(500);
+    plotx3.resize(500);
+
+    for (int i = 0; i < 500; i++)
+    {
+        visy[i] = (float)i * 0.1;
+    }
+
     ros::init(argc, argv, "compute");
     ros::NodeHandle nh;
 
@@ -110,6 +126,23 @@ void observe_callback(const ros::TimerEvent &e)
     {
         car_obs.compute_score();
     }
+
+    // 可视化当前车道线
+    for (int i = 0; i < 500; i++)
+    {
+        plotx0[i] = -car_obs.lane.compute_lane_y(visy[i], 0);
+        plotx1[i] = -car_obs.lane.compute_lane_y(visy[i], 1);
+        plotx2[i] = -car_obs.lane.compute_lane_y(visy[i], 2);
+        plotx3[i] = -car_obs.lane.compute_lane_y(visy[i], 3);
+    }
+    plt::clf();
+    plt::plot(plotx0, visy);
+    plt::plot(plotx1, visy);
+    plt::plot(plotx2, visy);
+    plt::plot(plotx3, visy);
+
+    plt::xlim(-25, 25);
+    plt::pause(0.01);
 }
 
 void car_obs_t::sample_data()

@@ -206,7 +206,6 @@ target_link_libraries(${PROJECT_NAME}_node
 	${EIGEN3_LIBS}
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib/libosqp.so
-
 )
 
 add_executable(score
