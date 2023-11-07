@@ -48,9 +48,9 @@ find_package(Eigen3 REQUIRED)
 
 # generate_dynamic_reconfigure_options(cfg/config.cfg) 
 
-# find_package(Python3 COMPONENTS Development NumPy REQUIRED)
-# message(${Python3_INCLUDE_DIRS} )
-# message(${Python3_NumPy_INCLUDE_DIRS})
+find_package(Python3 COMPONENTS Development NumPy REQUIRED)
+message(${Python3_INCLUDE_DIRS} )
+message(${Python3_NumPy_INCLUDE_DIRS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -169,6 +169,8 @@ include_directories(
 	# ${PROJECT_SOURCE_DIR}/thirdparty/osqp/include
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp/include/osqp
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/include
+	${Python3_INCLUDE_DIRS} 
+	${Python3_NumPy_INCLUDE_DIRS}
 	# /usr/local/include/OsqpEigen
 	# /usr/local/include/osqp
 	# /usr/local/share/osqp/codegen_files/inc/private
@@ -204,6 +206,7 @@ target_link_libraries(${PROJECT_NAME}_node
 	${EIGEN3_LIBS}
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib/libosqp.so
+
 )
 
 add_executable(score
@@ -214,7 +217,8 @@ add_executable(score
 target_link_libraries(score
 	${catkin_LIBRARIES}
 	${EIGEN3_LIBS}
-
+	Python3::Python 
+	Python3::NumPy
 )
 
 ## Rename C++ executable without prefix

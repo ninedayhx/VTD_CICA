@@ -15,6 +15,7 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
+#include <algorithm>
 
 #include "common_msgs/Control_Test.h"
 #include "common_msgs/CICV_Location.h"
@@ -176,7 +177,10 @@ public:
     control_t();
 
     void leader_update();
-    void is_lane_changing();
+    void is_cutinto();
+    void is_cutout();
+    int find_the_latest(std::vector<common_msgs::Perceptionobject> _car);
+    void find_current_lane_car(float dis, std::vector<common_msgs::Perceptionobject> _car);
     void update_state_vec();
 
     common_msgs::Control_Test lon_speed_control(float speed_des);

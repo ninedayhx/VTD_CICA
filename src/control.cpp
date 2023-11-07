@@ -315,16 +315,18 @@ void control_t::leader_update()
     if (car_num == 1)
     {
         leader.update(car[0], lane, self);
-        is_lane_changing();
+        is_cutinto();
     }
     if (car_num > 1)
     {
-        std::cout << "car num err" << std::endl;
-        // todo
+        std::cout << "car num:" << car_num << std::endl;
+        // 如果当前车道前30米无车，且侧道30内有车，切换侧道里将要变道的车作为leader
+        // 前方有车，跟车，跟车过程中，被跟车切出，则找到当前车道第二远的车作为leader车
+        find_the_latest(car);
     }
 }
 
-void control_t::is_lane_changing()
+void control_t::is_cutinto()
 {
     float lane_y = 0;
     float lane_leader_abs_ang = atan(lane.compute_lane_rel_angle(leader.d_x, 1)) + self.phi; // rad
@@ -381,6 +383,29 @@ void control_t::is_lane_changing()
     {
         std::cout << "leader lane err" << std::endl;
     }
+}
+
+void control_t::is_cutout()
+{
+}
+
+int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
+{
+    int num = _car.size();
+    int p = 0;
+    float tmp = 0;
+    std::vector<float> line_dis;
+    line_dis.resize(num);
+    for (int i = 0; i < num; i++)
+    {
+        line_dis[i] = lane.compute_line_length(_car[i].x, lane.car_front_len);
+    }
+    auto minPos = std::min_element(line_dis.begin(), line_dis.end());
+    return minPos - line_dis.begin();
+}
+
+void control_t::find_current_lane_car(float dis, std::vector<common_msgs::Perceptionobject> _car)
+{
 }
 
 /**
