@@ -162,7 +162,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
         }
     }
 
-    u = u * 0.01 + u_last * 0.99;
+    u = u * 0.1 + u_last * 0.9;
     u_last = u;
     // std::cout << "u_filter" << u << std::endl;
     u_des = u;
