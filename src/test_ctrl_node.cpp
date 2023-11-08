@@ -165,7 +165,8 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[1] = car_ctrl.x_k(1);
     dmsg.data[2] = car_ctrl.x_k(2);
     dmsg.data[3] = (float)mpc_lon->u_apply(0);
-    dmsg.data[4] = car_ctrl.self.a_x;
-    dmsg.data[5] = car_ctrl.self.j_x;
+    dmsg.data[4] = car_ctrl.self.u_des;
+    dmsg.data[5] = car_ctrl.self.a_x;
+    dmsg.data[6] = car_ctrl.self.j_x;
     debug_pub.publish(dmsg);
 }

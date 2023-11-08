@@ -130,6 +130,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
     float u;
     float alpha = 0.1;
     static float a_last = 0;
+    static float u_last = 0;
 
     if (en_filter)
     {
@@ -153,14 +154,18 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
     {
         if (v_x >= 0.01)
         {
-            u = a_des / (float)10;
+            u = a_des / 10.0f;
         }
         else
         {
             u = 0;
         }
     }
-    u_des = a_des;
+
+    u = u * 0.01 + u_last * 0.99;
+    u_last = u;
+    // std::cout << "u_filter" << u << std::endl;
+    u_des = u;
 
     common_msgs::Control_Test msg;
     if (u >= 0)

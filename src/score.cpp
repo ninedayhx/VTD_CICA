@@ -26,7 +26,7 @@
 #include "control.h"
 #include "matplotlibcpp.h"
 
-// #define SCORE_LOG
+#define SCORE_LOG
 // #define PLOT_LOG
 
 using namespace std;
