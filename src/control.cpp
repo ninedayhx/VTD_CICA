@@ -125,18 +125,17 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
     lane = _lane.lane_locate;
 }
 
-common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, float filter_arg)
+common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg)
 {
     double u;
     float alpha = filter_arg;
+    float a_des = a;
     static float a_last = 0;
     static float u_last = 0;
 
-    // if (en_filter)
-    // {
     a_des = alpha * a_des + (1 - alpha) * a_last;
-    // }
     a_last = a_des;
+    a_des_f = a_des;
 
     if (a_des >= 0)
     {
@@ -352,13 +351,13 @@ void control_t::leader_update()
 
         if (itr >= 0)
         {
-            std::cout << "car_cur" << std::endl;
+            // std::cout << "car_cur" << std::endl;
             self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
         }
         else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
         {
-            std::cout << "car_oth" << std::endl;
+            // std::cout << "car_oth" << std::endl;
             self.start_follow = 1;
             leader.update(car_oth[oth_itr], lane, self);
         }
@@ -439,17 +438,12 @@ int control_t::is_lane_changing(std::vector<common_msgs::Perceptionobject> _car)
 
         if (abs(radTodeg(car_l_rel_ang)) > 3) // deg
         {
-            std::cout << "rel_ang" << radTodeg(car_l_rel_ang) << " dis " << pow(_car[i].x, 2) + pow(_car[i].y, 2) << std::endl;
+            // std::cout << "rel_ang" << radTodeg(car_l_rel_ang) << " dis " << pow(_car[i].x, 2) + pow(_car[i].y, 2) << std::endl;
             return i;
         }
     }
     return -1;
 }
-
-// else
-// {
-//     std::cout << "leader lane err" << std::endl;
-// }
 
 int control_t::is_cutinto(common_msgs::Perceptionobject _car)
 {
@@ -621,9 +615,9 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     static float err3 = 0;
     static float u_last = 0;
     float kp, ki, kd, des, err, du, u;
-    kp = 1;
+    kp = 0.5;
     ki = 0;
-    kd = 0.1;
+    kd = 0.5;
 
     err = speed_des * 1000 / 60 / 60 - self.v_x;
 

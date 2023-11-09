@@ -455,6 +455,7 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
 
     U_solve = solver.getSolution();
     u_apply = U_solve.block(0, 0, m, 1);
+    du = u_apply(0) - u_last(0);
     u_last = u_apply;
 
 #ifdef MPC_LOG

@@ -27,34 +27,35 @@ using EVXd = Eigen::VectorXd;
 class MPC_t
 {
 public:
-    int Np;                          // 预测或控制时域 Np = Nc
-    int Nc;                          // unuse
-    int n;                           // 状态变量维度
-    int m;                           // 控制变量维度
-                                     //
-    EMXd A_d, B_d;                   // 离散后的矩阵
-    double TS = 0.01;                // 控制周期
-                                     //
-    EMXd _A;                         // 预测状态矩阵 (n*Np)*n
-    EMXd _B;                         // 预测控制矩阵 (n*Np)*(n*Np)
-    EMXd _Q;                         // 增广Q矩阵 (n*Np)*(n*Np)
-    EMXd _R;                         // 增广R矩阵 (m*Np)*(m*Np)
-    EMXd _F;                         // 线性规划矩阵 _F = _B^T*_Q*_A (n*Np)*n
-    ESMd _H;                         // hessian矩阵 _H = _B^T*_Q*_B+_R (m*Np)*(m*Np)
-    EVXd grad;                       // 梯度向量 grad = _F*x(k|k) (n*Np)*1
-                                     //
-    EVXd u_last;                     // 上次控制量
-    EVXd U_solve;                    // osqp求解出的Np步的控制量向量
-    EVXd u_apply;                    // 取当前时刻控制量
-                                     //
-    ESMd L;                          // 线性约束矩阵 稀疏
-    EVXd LB, UB;                     // 上下限约束向量
-                                     //
-    ESMd H_s, L_s;                   // 软约束后的hessian和线性约束矩阵
-    EVXd grad_s, LB_s, UB_s;         // 软约束
-    const double rho[3] = {0, 0, 1}; //
-                                     //
-    OsqpEigen::Solver solver;        //
+    int Np;                             // 预测或控制时域 Np = Nc
+    int Nc;                             // unuse
+    int n;                              // 状态变量维度
+    int m;                              // 控制变量维度
+                                        //
+    EMXd A_d, B_d;                      // 离散后的矩阵
+    double TS = 0.01;                   // 控制周期
+                                        //
+    EMXd _A;                            // 预测状态矩阵 (n*Np)*n
+    EMXd _B;                            // 预测控制矩阵 (n*Np)*(n*Np)
+    EMXd _Q;                            // 增广Q矩阵 (n*Np)*(n*Np)
+    EMXd _R;                            // 增广R矩阵 (m*Np)*(m*Np)
+    EMXd _F;                            // 线性规划矩阵 _F = _B^T*_Q*_A (n*Np)*n
+    ESMd _H;                            // hessian矩阵 _H = _B^T*_Q*_B+_R (m*Np)*(m*Np)
+    EVXd grad;                          // 梯度向量 grad = _F*x(k|k) (n*Np)*1
+                                        //
+    EVXd u_last;                        // 上次控制量
+    EVXd U_solve;                       // osqp求解出的Np步的控制量向量
+    EVXd u_apply;                       // 取当前时刻控制量
+    double du;                          //
+                                        //
+    ESMd L;                             // 线性约束矩阵 稀疏
+    EVXd LB, UB;                        // 上下限约束向量
+                                        //
+    ESMd H_s, L_s;                      // 软约束后的hessian和线性约束矩阵
+    EVXd grad_s, LB_s, UB_s;            // 软约束
+    const double rho[3] = {1, 5000, 1}; //
+                                        //
+    OsqpEigen::Solver solver;           //
 
     bool solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log);
     void discrete(EMXd A, EMXd B, int type);
@@ -74,7 +75,7 @@ public:
 class MPC_follow_t : public MPC_t
 {
 public:
-    const double du_max = 0.08; // u最大增量
+    const double du_max = 0.04; // u最大增量
     const double u_max = 3;     // u上界约束
     const double u_min = -5;    // u下界约束
     EVXd U_max, U_min, dU_max, V_self;

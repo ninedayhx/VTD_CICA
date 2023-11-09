@@ -126,10 +126,6 @@ void lane_callback(const common_msgs::Lanes &msg)
 
 void controller_callback(const ros::TimerEvent &e)
 {
-
-    /*
-        预赛规则
-    */
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
@@ -139,10 +135,10 @@ void controller_callback(const ros::TimerEvent &e)
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), 0.5);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), 0.01);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), true);
+        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);
 
         // cout << "following...  self lane: " << car_ctrl.lane.lane_locate << " leader lane: " << car_ctrl.leader.lane << endl;
     }
@@ -150,7 +146,7 @@ void controller_callback(const ros::TimerEvent &e)
     {
         car_ctrl.lon_v_des = 30;
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        cout << "no leader, self speed... lane = " << endl;
+        // cout << "no leader, self speed... lane = " << endl;
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;
@@ -160,15 +156,17 @@ void controller_callback(const ros::TimerEvent &e)
     ctrl_pub.publish(ctrl_msg);
 
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(8);
+    dmsg.data.resize(11);
     dmsg.data[0] = car_ctrl.x_k(0);
     dmsg.data[1] = car_ctrl.x_k(1);
-    dmsg.data[5] = car_ctrl.self.a_x;
-
     dmsg.data[2] = car_ctrl.x_k(2);
     dmsg.data[3] = (float)mpc_lon->u_apply(0);
-    dmsg.data[4] = car_ctrl.self.u_des;
-    dmsg.data[5] = car_ctrl.self.a_x;
-    dmsg.data[6] = car_ctrl.self.j_x;
+    dmsg.data[4] = car_ctrl.self.a_des_f;
+    dmsg.data[5] = car_ctrl.self.u_des;
+    dmsg.data[6] = car_ctrl.self.a_x;
+    dmsg.data[7] = car_ctrl.self.j_x;
+    dmsg.data[8] = car_ctrl.leader.a_x;
+    dmsg.data[9] = car_ctrl.self.a_x;
+    dmsg.data[10] = mpc_lon->du;
     debug_pub.publish(dmsg);
 }

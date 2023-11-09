@@ -131,6 +131,7 @@ public:
                          -0.0004034};  // 加速度-油门的对应系数
 
     float L_des; // 跟车间距
+    float a_des_f;
 
     // state
     int start_follow;
