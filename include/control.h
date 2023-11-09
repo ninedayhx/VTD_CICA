@@ -158,7 +158,7 @@ public:
 
     car_self();
     void update(const common_msgs::CICV_Location &msg, lane_param _lane);
-    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, bool en_filter);
+    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, float filter_arg);
     bool is_in_destination();
 };
 

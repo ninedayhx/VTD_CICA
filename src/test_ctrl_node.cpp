@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     Q_mpc << 100,0,0,
              0,100,0,
              0,0,100;
-    R_mpc << 1;
+    R_mpc << 5;
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
     // clang-format on
@@ -139,7 +139,7 @@ void controller_callback(const ros::TimerEvent &e)
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), true);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), 0.5);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), true);
@@ -162,7 +162,8 @@ void controller_callback(const ros::TimerEvent &e)
     std_msgs::Float32MultiArray dmsg;
     dmsg.data.resize(8);
     dmsg.data[0] = car_ctrl.x_k(0);
-    dmsg.data[1] = car_ctrl.x_k(1);    dmsg.data[5] = car_ctrl.self.a_x;
+    dmsg.data[1] = car_ctrl.x_k(1);
+    dmsg.data[5] = car_ctrl.self.a_x;
 
     dmsg.data[2] = car_ctrl.x_k(2);
     dmsg.data[3] = (float)mpc_lon->u_apply(0);

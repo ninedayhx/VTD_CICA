@@ -125,17 +125,17 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
     lane = _lane.lane_locate;
 }
 
-common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filter)
+common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, float filter_arg)
 {
     double u;
-    float alpha = 0.1;
+    float alpha = filter_arg;
     static float a_last = 0;
     static float u_last = 0;
 
-    if (en_filter)
-    {
-        a_des = alpha * a_des + (1 - alpha) * a_last;
-    }
+    // if (en_filter)
+    // {
+    a_des = alpha * a_des + (1 - alpha) * a_last;
+    // }
     a_last = a_des;
 
     if (a_des >= 0)

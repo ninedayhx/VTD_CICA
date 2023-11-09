@@ -84,6 +84,7 @@
  * @param Np_
  * @param constraint_type   1 for hard constraint
  *                          2 for soft constraint
+ * @param sc_num soft constraint num
  */
 MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num)
 {

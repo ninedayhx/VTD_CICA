@@ -54,7 +54,6 @@ public:
     EVXd grad_s, LB_s, UB_s;         // 软约束
     const double rho[3] = {0, 0, 1}; //
                                      //
-                                     //
     OsqpEigen::Solver solver;        //
 
     bool solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log);
