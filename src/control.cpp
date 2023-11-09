@@ -127,7 +127,7 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
 
 common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filter)
 {
-    float u;
+    double u;
     float alpha = 0.1;
     static float a_last = 0;
     static float u_last = 0;
@@ -143,11 +143,25 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
         if (v_x < 5 && v_x >= 0)
         {
             u = a_des / 5.4;
+            // std::cout << "test1" << std::endl;
         }
         else
         {
-            u = p[0] + p[1] * v_x + p[2] * a_des +
-                p[3] * v_x * v_x + p[4] * v_x * a_des + p[5] * a_des * a_des;
+            if (a_des >= 0.05)
+            {
+                u = p[0] + p[1] * (double)v_x + p[2] * (double)a_des +
+                    p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_des + p[5] * (double)a_des * (double)a_des;
+            }
+            else if (a_des < 0.05 && a_des >= 0)
+            {
+                float a_tmp = 0.05;
+                double u_tmp;
+                u_tmp = p[0] + p[1] * (double)v_x + p[2] * (double)a_tmp +
+                        p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_tmp + p[5] * (double)a_tmp * (double)a_tmp;
+                u = a_des / a_tmp * u_tmp;
+            }
+            // std::cout << "test 2"
+            //           << " a_des " << a_des << " u " << u << std::endl;
         }
     }
     if (a_des < 0)
@@ -155,15 +169,18 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filt
         if (v_x >= 0.01)
         {
             u = a_des / 10.0f;
+            // std::cout << "test3"
+            //           << "a_des" << a_des << " u " << u << std::endl;
         }
         else
         {
             u = 0;
+            // std::cout << "test4" << std::endl;
         }
     }
 
-    u = u * 0.01 + u_last * 0.99;
-    u_last = u;
+    // u = u * 0.1 + u_last * 0.9;
+    // u_last = u;
     // std::cout << "u_filter" << u << std::endl;
     u_des = u;
 

@@ -119,14 +119,38 @@ public:
 class car_self : public car_t
 {
 public:
-    const float car_front_len = 3.647;                   // 车辆后轴到前保险杠距离
-    const float max_delta = 15;                          // 最大转向角
-    const float max_steer_angle = 540;                   // 最大方向盘转角
-    const float l_fr = 2.691;                            // 轴距
-    const float p[6] = {0.01883, -0.0002959, -0.005006,  //
-                        0.0003868, 0.03745, -0.0004034}; // 加速度-油门的对应系数
-                                                         //
-    float L_des;                                         // 跟车间距
+    const float car_front_len = 3.647; // 车辆后轴到前保险杠距离
+    const float max_delta = 15;        // 最大转向角
+    const float max_steer_angle = 540; // 最大方向盘转角
+    const float l_fr = 2.691;          // 轴距
+    const double p[6] = {0.01883,      //
+                         -0.0002959,   //
+                         -0.005006,    //
+                         0.0003868,    //
+                         0.03745,      //
+                         -0.0004034};  // 加速度-油门的对应系数
+
+    const double q[10] = {0.0621,
+                          -0.02753,
+                          0.03587,
+                          0.005173,
+                          0.03005,
+                          -0.01025,
+                          -0.0002606,
+                          0.0003938,
+                          0.0006463,
+                          0.000865};
+    const double l[10] = {-0.126,
+                          0.05972,
+                          -18.03,
+                          -0.00927,
+                          2.298,
+                          183.3,
+                          0.0004708,
+                          -0.00621,
+                          -15.37,
+                          -402.2};
+    float L_des; // 跟车间距
 
     // state
     int start_follow;
