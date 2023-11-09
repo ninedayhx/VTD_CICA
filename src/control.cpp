@@ -142,7 +142,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, float filter
     {
         if (v_x < 5 && v_x >= 0)
         {
-            u = a_des / 5.4;
+            u = (double)a_des / 5.4;
             // std::cout << "test1" << std::endl;
         }
         else
@@ -359,8 +359,7 @@ void control_t::leader_update()
         else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
         {
             std::cout << "car_oth" << std::endl;
-            if ()
-                self.start_follow = 1;
+            self.start_follow = 1;
             leader.update(car_oth[oth_itr], lane, self);
         }
         else
@@ -641,7 +640,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
         u = 2.9;
     }
 
-    return self.acc_to_Thr_and_Bra(u, true);
+    return self.acc_to_Thr_and_Bra(u, 1);
 }
 
 /**
