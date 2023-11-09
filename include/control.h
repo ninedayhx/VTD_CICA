@@ -130,26 +130,6 @@ public:
                          0.03745,      //
                          -0.0004034};  // 加速度-油门的对应系数
 
-    const double q[10] = {0.0621,
-                          -0.02753,
-                          0.03587,
-                          0.005173,
-                          0.03005,
-                          -0.01025,
-                          -0.0002606,
-                          0.0003938,
-                          0.0006463,
-                          0.000865};
-    const double l[10] = {-0.126,
-                          0.05972,
-                          -18.03,
-                          -0.00927,
-                          2.298,
-                          183.3,
-                          0.0004708,
-                          -0.00621,
-                          -15.37,
-                          -402.2};
     float L_des; // 跟车间距
 
     // state
@@ -185,9 +165,11 @@ public:
 class control_t
 {
 public:
+    const float search_dis = 40;
+
     car_self self;
     leader_t leader;
-    std::vector<common_msgs::Perceptionobject> car_cur;
+    std::vector<common_msgs::Perceptionobject> car_cur, car_oth;
     obtacle obt;
     lane_param lane;
 
@@ -204,10 +186,14 @@ public:
 
     void leader_update();
     void is_lane_changing();
+    int is_lane_changing(std::vector<common_msgs::Perceptionobject> _car);
+
     int is_cutinto(common_msgs::Perceptionobject _car);
     void is_cutout();
     int find_the_latest(std::vector<common_msgs::Perceptionobject> _car);
     std::vector<common_msgs::Perceptionobject> find_current_lane_car(std::vector<common_msgs::Perceptionobject> _car);
+    std::vector<common_msgs::Perceptionobject> find_other_lane_car(std::vector<common_msgs::Perceptionobject> _car);
+
     void update_state_vec();
 
     common_msgs::Control_Test lon_speed_control(float speed_des);

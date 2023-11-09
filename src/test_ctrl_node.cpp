@@ -150,7 +150,7 @@ void controller_callback(const ros::TimerEvent &e)
     {
         car_ctrl.lon_v_des = 30;
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        // cout << "no leader, self speed... lane = " << endl;
+        cout << "no leader, self speed... lane = " << endl;
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;

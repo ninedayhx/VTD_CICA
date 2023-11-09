@@ -344,13 +344,31 @@ void control_t::leader_update()
         // 如果当前车道前30米无车，且侧道30内有车，切换侧道里将要变道的车作为leader
         // 前方有车，跟车，跟车过程中，被跟车切出，则找到当前车道第二远的车作为leader车
         car_cur = find_current_lane_car(obt.car);
-        // std::cout << "stttt" << car_cur.size() << std::endl;
+        car_oth = find_other_lane_car(obt.car);
+
+        // int tmp = is_lane_changing(car_cur);
+        int oth_itr = is_lane_changing(car_oth);
         int itr = find_the_latest(car_cur);
-        // std::cout << "itr :" << itr << std::endl;
-        if (itr >= 0 && self.start_follow == 1)
+
+        if (itr >= 0)
         {
+            std::cout << "car_cur" << std::endl;
+            self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
         }
+        else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
+        {
+            std::cout << "car_oth" << std::endl;
+            if ()
+                self.start_follow = 1;
+            leader.update(car_oth[oth_itr], lane, self);
+        }
+        else
+        {
+            self.start_follow = 0;
+        }
+        // std::cout << "stttt" << car_cur.size() << std::endl;
+        // std::cout << "itr :" << itr << std::endl;
     }
 }
 
@@ -411,6 +429,28 @@ void control_t::is_lane_changing()
         std::cout << "leader lane err" << std::endl;
     }
 }
+
+int control_t::is_lane_changing(std::vector<common_msgs::Perceptionobject> _car)
+{
+    float lane_y, carxl_abs_ang, car_l_rel_ang;
+    for (int i = 0; i < _car.size(); i++)
+    {
+        carxl_abs_ang = atan(lane.compute_lane_rel_angle(_car[i].x, 1)) + self.phi; // rad
+        car_l_rel_ang = _car[i].heading - carxl_abs_ang;                            // rad
+
+        if (abs(radTodeg(car_l_rel_ang)) > 3) // deg
+        {
+            std::cout << "rel_ang" << radTodeg(car_l_rel_ang) << " dis " << pow(_car[i].x, 2) + pow(_car[i].y, 2) << std::endl;
+            return i;
+        }
+    }
+    return -1;
+}
+
+// else
+// {
+//     std::cout << "leader lane err" << std::endl;
+// }
 
 int control_t::is_cutinto(common_msgs::Perceptionobject _car)
 {
@@ -473,7 +513,7 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
     int num = _car.size();
     if (num <= 0)
     {
-        self.start_follow = 0;
+        // self.start_follow = 0;
         return -1;
     }
     int p = 0;
@@ -489,12 +529,12 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
     auto minPos = std::min_element(line_dis.begin(), line_dis.end());
     if (line_dis[minPos - line_dis.begin()] < 25 && line_dis[minPos - line_dis.begin()] > 2.5)
     {
-        self.start_follow = 1;
+        // self.start_follow = 1;
         return minPos - line_dis.begin();
     }
     else
     {
-        self.start_follow = 0;
+        // self.start_follow = 0;
         return -1;
     }
 }
@@ -504,25 +544,61 @@ std::vector<common_msgs::Perceptionobject> control_t::find_current_lane_car(std:
     // float dis_y = lane.compute_lane_y(dis + lane.car_front_len, 1);
     // float dis_k = lane.compute_lane_rel_angle(dis + lane.car_front_len, 1);
     int car_num = _car.size();
-    float lane_y = 0;
+    float lane1_y = 0;
+    float lane2_y = 0;
+
     std::vector<common_msgs::Perceptionobject> tmp;
     for (int i = 0; i < car_num; i++)
     {
-        if (self.lane == 1)
+        lane1_y = lane.compute_lane_y(_car[i].x, 1);
+        lane2_y = lane.compute_lane_y(_car[i].x, 2);
+
+        if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
         {
-            lane_y = lane.compute_lane_y(_car[i].x, 2);
-            if (lane_y <= _car[i].y && _car[i].x > lane.car_front_len)
+            if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
             {
                 tmp.push_back(_car[i]);
+            }
+            // std::cout << "cur" << _car[i].x << std::endl;
+        }
+    }
+    // std::cout << "car_curnum: " << tmp.size() << std::endl;
+    return tmp;
+}
+
+std::vector<common_msgs::Perceptionobject> control_t::find_other_lane_car(std::vector<common_msgs::Perceptionobject> _car)
+{
+    // float dis_y = lane.compute_lane_y(dis + lane.car_front_len, 1);
+    // float dis_k = lane.compute_lane_rel_angle(dis + lane.car_front_len, 1);
+    int car_num = _car.size();
+    float lane1_y = 0;
+    float lane2_y = 0;
+
+    std::vector<common_msgs::Perceptionobject> tmp;
+    for (int i = 0; i < car_num; i++)
+    {
+        if (lane.lane_locate == 1)
+        {
+            lane1_y = lane.compute_lane_y(_car[i].x, 2);
+            lane2_y = lane.compute_lane_y(_car[i].x, 3);
+
+            if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
+            {
+                if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
+                    tmp.push_back(_car[i]);
                 // std::cout << "cur" << _car[i].x << std::endl;
             }
         }
-        else if (self.lane == 2)
+        else if (lane.lane_locate == 2)
         {
-            lane_y = lane.compute_lane_y(_car[i].x, 1);
-            if (lane_y >= _car[i].y && _car[i].x > lane.car_front_len)
+            lane1_y = lane.compute_lane_y(_car[i].x, 0);
+            lane2_y = lane.compute_lane_y(_car[i].x, 1);
+
+            if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
             {
-                tmp.push_back(_car[i]);
+                if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
+                    tmp.push_back(_car[i]);
+                // std::cout << "cur" << _car[i].x << std::endl;
             }
         }
         else
