@@ -147,33 +147,21 @@ void controller_callback(const ros::TimerEvent &e)
     }
     else
     {
-        float t_in = 0;
-        if (flag != 0)
-        {
-            t_in = e.current_real.toSec() - e.last_real.toSec();
-        }
-        else
-        {
-            t_in = 0.01;
-        }
+        float t_in = 0.01;
         a_tmp = a_tmp + 2 * t_in;
         if (a_tmp >= 3)
         {
-            cout << "test" << endl;
+            // cout << "test" << endl;
             a_tmp = 3;
         }
-        // cout << "a_tmp" << a_tmp << "v_des" << car_ctrl.lon_v_des / 3.6 << endl;
         car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
         if (car_ctrl.lon_v_des >= 30)
         {
-            cout << "test" << endl;
-
+            // cout << "test" << endl;
             car_ctrl.lon_v_des = 30;
         }
-        cout << " a_tmp " << a_tmp << " v_des " << car_ctrl.lon_v_des << " t " << t_in << endl;
-
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        cout << "no leader, self speed... lane = " << endl;
+        // cout << "no leader, self speed... lane = " << endl;
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;
