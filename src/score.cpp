@@ -27,7 +27,7 @@
 #include "matplotlibcpp.h"
 
 #define SCORE_LOG
-// #define PLOT_LOG
+#define PLOT_LOG
 
 using namespace std;
 namespace plt = matplotlibcpp;

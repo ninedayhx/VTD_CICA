@@ -151,6 +151,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
         {
             u = q[0] + q[1] * (double)v_x + q[2] * (double)a_des;
             // std::cout << "test1" << std::endl;
+            std::cout << "sur = 1" << std::endl;
         }
         else
         {
@@ -158,14 +159,25 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
             {
                 u = p[0] + p[1] * (double)v_x + p[2] * (double)a_des +
                     p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_des + p[5] * (double)a_des * (double)a_des;
+                std::cout << "sur = 2" << std::endl;
             }
             else if (a_des < 0.05 && a_des >= 0)
             {
+                // float a_tmp = 0.05;
+                // double u_tmp;
+                // u_tmp = p[0] + p[1] * (double)v_x + p[2] * (double)a_tmp +
+                //         p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_tmp + p[5] * (double)a_tmp * (double)a_tmp;
+                // u = a_des / a_tmp * u_tmp;
+
                 float a_tmp = 0.05;
-                double u_tmp;
+                double u_tmp, der_u_tmp, c1, c2;
                 u_tmp = p[0] + p[1] * (double)v_x + p[2] * (double)a_tmp +
                         p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_tmp + p[5] * (double)a_tmp * (double)a_tmp;
-                u = a_des / a_tmp * u_tmp;
+                der_u_tmp = p[2] + p[4] * (double)v_x + 2 * p[5] * (double)a_tmp; // 边界点处的斜率
+                c1 = (a_tmp * der_u_tmp - u_tmp) / (a_tmp * a_tmp);
+                c2 = 2 * u_tmp / a_tmp - der_u_tmp;
+                u = c1 * a_des * a_des + c2 * a_des;
+                std::cout << "sur = 3" << std::endl;
             }
             // std::cout << "test 2"
             //           << " a_des " << a_des << " u " << u << std::endl;
@@ -173,11 +185,11 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
     }
     if (a_des < 0)
     {
-        if (v_x >= 0.01)
+        if (v_x >= 0.5)
         {
             u = a_des / 10.0f;
-            // std::cout << "test3"
-            //           << "a_des" << a_des << " u " << u << std::endl;
+            std::cout << "test3"
+                      << "a_des" << a_des << " u " << u << std::endl;
         }
         else
         {
