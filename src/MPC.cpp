@@ -180,6 +180,8 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
+    epsilon.resize(3);
+
     H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
     grad_s.resize(grad.rows() + sc_num);
     L_s.resize(L.rows() + sc_num, L.cols() + sc_num);
@@ -365,8 +367,11 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
     one_2np.setOnes();
 
     tmp_uf.resize(L.rows(), sc_num);
-    tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
-    tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    // tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
+    // tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    // 将u和du改为硬约束
+    tmp_uf.block(0, 0, 2 * m, 1).setZero();
+    tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
     tmp_uf.block(4 * m, 2, 2 * Np, 1) = one_2np;
 
     tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
@@ -455,6 +460,7 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
 
     U_solve = solver.getSolution();
     u_apply = U_solve.block(0, 0, m, 1);
+    epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
     du = u_apply(0) - u_last(0);
     u_last = u_apply;
 
@@ -486,6 +492,12 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;
 
+    // std::cout
+    //     << "UB:" << std::endl
+    //     << U_max(0) << std::endl
+    //     << -U_min(0) << std::endl
+    //     << (dU_max + W * u_last)(0) << std::endl
+    //     << (1.5 * one + 0.45 * V_self - E * _A * xk)(0) << std::endl;
 #ifdef MPC_LOG
     std::cout
         << "U_max:" << std::endl

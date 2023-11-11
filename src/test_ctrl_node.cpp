@@ -156,7 +156,7 @@ void controller_callback(const ros::TimerEvent &e)
     ctrl_pub.publish(ctrl_msg);
 
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(11);
+    dmsg.data.resize(14);
     dmsg.data[0] = car_ctrl.x_k(0);
     dmsg.data[1] = car_ctrl.x_k(1);
     dmsg.data[2] = car_ctrl.x_k(2);
@@ -168,5 +168,8 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[8] = car_ctrl.leader.a_x;
     dmsg.data[9] = car_ctrl.self.a_x;
     dmsg.data[10] = mpc_lon->du;
+    dmsg.data[11] = mpc_lon->epsilon(0);
+    dmsg.data[12] = mpc_lon->epsilon(1);
+    dmsg.data[13] = mpc_lon->epsilon(2);
     debug_pub.publish(dmsg);
 }
