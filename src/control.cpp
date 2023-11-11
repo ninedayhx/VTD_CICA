@@ -21,6 +21,14 @@ float degTorad(float deg)
     float rad = deg / 180.0f * M_PI;
     return rad;
 }
+float kmphTomps(float kmph)
+{
+    float mps = kmph / 3.6;
+}
+float mpsTokmph(float mps)
+{
+    float kmph = mps * 3.6;
+}
 /***********************************************/
 /*                   构造函数                   */
 /***********************************************/
@@ -141,7 +149,7 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
     {
         if (v_x < 5 && v_x >= 0)
         {
-            u = (double)a_des / 5.4;
+            u = q[0] + q[1] * (double)v_x + q[2] * (double)a_des;
             // std::cout << "test1" << std::endl;
         }
         else
@@ -633,6 +641,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     {
         u = 2.9;
     }
+    lon_a_des = u;
 
     return self.acc_to_Thr_and_Bra(u, 1);
 }

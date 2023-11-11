@@ -13,6 +13,7 @@
 #define __MPC_H
 
 #include <iostream>
+#include <string>
 
 #include "eigen3/Eigen/Eigen"
 #include "eigen3/unsupported/Eigen/MatrixFunctions"

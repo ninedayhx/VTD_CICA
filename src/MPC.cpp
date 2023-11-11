@@ -426,7 +426,8 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     switch (err_flag)
     {
     case OsqpEigen::ErrorExitFlag::NoError:
-        // std::cout << "solver ok" << std::endl;
+        std::cout << solver.workspace()->info->solve_time << std::endl;
+        std::cout << solver.workspace()->info->status << std::endl;
         break;
     case OsqpEigen::ErrorExitFlag::DataValidationError:
         std::cout << "DataValidationError" << std::endl;

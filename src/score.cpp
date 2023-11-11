@@ -35,7 +35,7 @@ namespace plt = matplotlibcpp;
 class car_obs_t : public control_t
 {
 public:
-    const float sample_time = 0.04;
+    const float sample_time = 0.01;
     float N, N1, N2, N3, N4, follow_coef;
     int ax_cnt, ay_cnt, jx_cnt, jy_cnt;
     int frame_sum, follow_frame_sum, not_idea_cnt;

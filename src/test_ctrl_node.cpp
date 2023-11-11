@@ -126,6 +126,9 @@ void lane_callback(const common_msgs::Lanes &msg)
 
 void controller_callback(const ros::TimerEvent &e)
 {
+    static float a_tmp = 0;
+    static float flag = 0;
+
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
@@ -144,7 +147,31 @@ void controller_callback(const ros::TimerEvent &e)
     }
     else
     {
-        car_ctrl.lon_v_des = 30;
+        float t_in = 0;
+        if (flag != 0)
+        {
+            t_in = e.current_real.toSec() - e.last_real.toSec();
+        }
+        else
+        {
+            t_in = 0.01;
+        }
+        a_tmp = a_tmp + 2 * t_in;
+        if (a_tmp >= 3)
+        {
+            cout << "test" << endl;
+            a_tmp = 3;
+        }
+        // cout << "a_tmp" << a_tmp << "v_des" << car_ctrl.lon_v_des / 3.6 << endl;
+        car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+        if (car_ctrl.lon_v_des >= 30)
+        {
+            cout << "test" << endl;
+
+            car_ctrl.lon_v_des = 30;
+        }
+        cout << " a_tmp " << a_tmp << " v_des " << car_ctrl.lon_v_des << " t " << t_in << endl;
+
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
         // cout << "no leader, self speed... lane = " << endl;
     }
@@ -168,8 +195,14 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[8] = car_ctrl.leader.a_x;
     dmsg.data[9] = car_ctrl.self.a_x;
     dmsg.data[10] = mpc_lon->du;
-    dmsg.data[11] = mpc_lon->epsilon(0);
-    dmsg.data[12] = mpc_lon->epsilon(1);
-    dmsg.data[13] = mpc_lon->epsilon(2);
+    dmsg.data[11] = kmphTomps(car_ctrl.lon_v_des);
+    dmsg.data[12] = car_ctrl.self.v_x;
+    dmsg.data[13] = car_ctrl.lon_a_des;
+
     debug_pub.publish(dmsg);
+
+    if (flag == 0)
+    {
+        flag = 1;
+    }
 }

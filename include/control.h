@@ -29,6 +29,8 @@
 
 float radTodeg(float rad);
 float degTorad(float deg);
+float kmphTomps(float rad);
+float mpsTokmph(float rad);
 
 /**
  * @brief 车辆原始信息类
@@ -129,7 +131,9 @@ public:
                          0.0003868,    //
                          0.03745,      //
                          -0.0004034};  // 加速度-油门的对应系数
-
+    const double q[3] = {0.02279,
+                         0.0002106,
+                         0.1819};
     float L_des; // 跟车间距
     float a_des_f;
 
