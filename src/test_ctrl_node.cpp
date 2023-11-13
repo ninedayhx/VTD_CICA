@@ -24,6 +24,8 @@ chrono::_V2::steady_clock::time_point start_time;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
+Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
+Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
 MPC_follow_t *mpc_lon;
 
 common_msgs::Control_Test ctrl_msg;
@@ -44,12 +46,16 @@ int main(int argc, char **argv)
 {
 
     // clang-format off
-    Eigen::MatrixXf Q_lat(2, 2), R_lat(1, 1);
-    Q_lat << 10, 0, 
-             0, 10;
-    R_lat << 60;
+    // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
+    Q_lat1 <<10, 0, 
+             0,10;
+    R_lat1 <<50000;
+    // Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
+    Q_lat2 << 10, 0, 
+              0, 10;
+    R_lat2 << 600;
 
-    LQR_lateral.get_param(Q_lat, R_lat, 0.01);
+    LQR_lateral.get_param(Q_lat1, R_lat1, 0.01);
 
     Eigen::MatrixXf Q_lon(3, 3), R_lon(1, 1);
     Q_lon << 60, 0,  0,
@@ -95,7 +101,7 @@ int main(int argc, char **argv)
 
     start_time = std::chrono::steady_clock::now();
 
-    LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
+    // LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
     // LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
 
@@ -127,6 +133,16 @@ void lane_callback(const common_msgs::Lanes &msg)
 void controller_callback(const ros::TimerEvent &e)
 {
     static float a_tmp = 0;
+    static int cnt = 0;
+    cnt++;
+    if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.013 && abs(car_ctrl.lane.lane_phi) <= 0.001)
+    {
+        // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
+        LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
+    }
+    LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
+    // cout << "k" << LQR_lateral.K << endl;
+
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
@@ -145,19 +161,20 @@ void controller_callback(const ros::TimerEvent &e)
     }
     else
     {
-        float t_in = 0.01;
-        a_tmp = a_tmp + 1.0 * t_in;
-        if (a_tmp >= 3)
-        {
-            // cout << "test" << endl;
-            a_tmp = 3;
-        }
-        car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
-        if (car_ctrl.lon_v_des >= 30)
-        {
-            // cout << "test" << endl;
-            car_ctrl.lon_v_des = 30;
-        }
+        // float t_in = 0.01;
+        // a_tmp = a_tmp + 2.0 * t_in;
+        // if (a_tmp >= 3)
+        // {
+        //     // cout << "test" << endl;
+        //     a_tmp = 3;
+        // }
+        // car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+        // if (car_ctrl.lon_v_des >= 30)
+        // {
+        //     // cout << "test" << endl;
+        //     car_ctrl.lon_v_des = 30;
+        // }
+        car_ctrl.lon_v_des = 30;
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
         // cout << "no leader, self speed... lane = " << endl;
     }

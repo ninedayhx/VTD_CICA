@@ -36,8 +36,8 @@ control_t::control_t()
 {
     sim_err_mod.A.resize(2, 2);
     sim_err_mod.B.resize(2, 1);
-    sim_err_mod.A << 0, 0, 30, 0;
-    sim_err_mod.B << 30 / 2.7, 0;
+    sim_err_mod.A << 0, 0, 25 / 3.6, 0;
+    sim_err_mod.B << 25 / 3.6 / 2.7, 0;
 
     // clang-format off
     float T_delay = 0.01;
@@ -277,8 +277,9 @@ void lane_param::update(const common_msgs::Lanes &msg)
     {
         std::cout << "lane_err" << tmp_cnt << std::endl;
     }
-    lane_phi = -atan(lane[1].c1);                       // 后轴与车道线夹角
-    lane_phi_forward = -2 * lane[1].c2 * car_front_len; // 车头与车道线夹角
+    lane_phi = -atan(lane[1].c1); // 后轴与车道线夹角
+    // lane_phi_forward = -2 * lane[1].c2 * car_front_len; // 车头与车道线夹角
+    lane_phi_forward = compute_lane_rel_angle(car_front_len + 3.0, 1);
 
 #ifdef LANE_LOG
     for (int j = 0; j < 4; j++)
@@ -529,7 +530,7 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
         // std::cout << "dasfgasdfa" << line_dis[i] << std::endl;
     }
     auto minPos = std::min_element(line_dis.begin(), line_dis.end());
-    if (line_dis[minPos - line_dis.begin()] < 25 && line_dis[minPos - line_dis.begin()] > 2.5)
+    if (line_dis[minPos - line_dis.begin()] < 22 && line_dis[minPos - line_dis.begin()] > 2.5)
     {
         // self.start_follow = 1;
         return minPos - line_dis.begin();
@@ -626,7 +627,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     float kp, ki, kd, des, err, du, u;
     kp = 1;
     ki = 0;
-    kd = 0.5;
+    kd = 0.1;
 
     err = speed_des * 1000 / 60 / 60 - self.v_x;
 
@@ -661,9 +662,9 @@ float control_t::lane_keep_LQR_control(LQR _lqr)
     err_dis = lane.lane_center_err;
 
     float u_delta = -_lqr.K(0, 0) * err_phi - _lqr.K(0, 1) * err_dis;
-    float u_delta_forward = lane.lane_phi_forward;
-    float u_angle = u_delta - self.v_x / self.l_fr * lane.lane_phi_forward;
-    u_angle = radTodeg(u_delta); // rad to deg
+    // float u_delta_forward = tan(lane.lane_phi_forward);
+    // float u_angle = u_delta - self.v_x / self.l_fr * u_delta_forward;
+    float u_angle = radTodeg(atan(u_delta)) + self.v_x / self.l_fr * lane.lane_phi_forward; // rad to deg
 
     // 输出限制
     if (u_angle > self.max_delta)
