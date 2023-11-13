@@ -624,7 +624,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     static float err3 = 0;
     static float u_last = 0;
     float kp, ki, kd, des, err, du, u;
-    kp = 0.5;
+    kp = 1;
     ki = 0;
     kd = 0.5;
 
