@@ -127,8 +127,6 @@ void lane_callback(const common_msgs::Lanes &msg)
 void controller_callback(const ros::TimerEvent &e)
 {
     static float a_tmp = 0;
-    static float flag = 0;
-
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
@@ -148,7 +146,7 @@ void controller_callback(const ros::TimerEvent &e)
     else
     {
         float t_in = 0.01;
-        a_tmp = a_tmp + 2 * t_in;
+        a_tmp = a_tmp + 4 * t_in;
         if (a_tmp >= 3)
         {
             // cout << "test" << endl;
@@ -188,9 +186,4 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[13] = car_ctrl.lon_a_des;
 
     debug_pub.publish(dmsg);
-
-    if (flag == 0)
-    {
-        flag = 1;
-    }
 }
