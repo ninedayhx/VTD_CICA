@@ -146,7 +146,7 @@ void controller_callback(const ros::TimerEvent &e)
     else
     {
         float t_in = 0.01;
-        a_tmp = a_tmp + 4 * t_in;
+        a_tmp = a_tmp + 1 * t_in;
         if (a_tmp >= 3)
         {
             // cout << "test" << endl;
