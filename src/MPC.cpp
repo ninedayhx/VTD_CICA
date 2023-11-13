@@ -473,20 +473,24 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     return true;
 }
 
-void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_soft)
+void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_soft, double a_last)
 {
     UB.resize(4 * Np * m + 2 * Np);
 
-    EVXd one;
+    EVXd one, u_tmp;
     one.resize(Np);
+    u_tmp.resize(m);
+    u_tmp(0) = a_last;
     one = one.setOnes();
     V_self.resize(Np);
     V_self = v * V_self.setOnes();
 
     UB << U_max,
         -U_min,
-        dU_max + W * u_last,
-        dU_max - W * u_last,
+        dU_max + W * u_tmp,
+        dU_max - W * u_tmp,
+        // dU_max + W * u_last,
+        // dU_max - W * u_last,
         1.5 * one + 0.45 * V_self - E * _A * xk,
         2.5 * one + 0.75 * V_self + E * _A * xk;
 

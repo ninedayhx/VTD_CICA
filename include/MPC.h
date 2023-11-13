@@ -86,7 +86,7 @@ public:
     EMXd W, E;
 
     MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num);
-    void compute_inequality_constraints(EVXd xk, double v, bool is_soft);
+    void compute_inequality_constraints(EVXd xk, double v, bool is_soft, double a_last);
     void add_soft_constraint();
 };
 

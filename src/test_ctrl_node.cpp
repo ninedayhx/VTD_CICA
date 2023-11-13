@@ -130,7 +130,7 @@ void controller_callback(const ros::TimerEvent &e)
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
-        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true);
+        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true, (double)car_ctrl.self.a_x);
 
         if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
         {
@@ -146,7 +146,7 @@ void controller_callback(const ros::TimerEvent &e)
     else
     {
         float t_in = 0.01;
-        a_tmp = a_tmp + 1 * t_in;
+        a_tmp = a_tmp + 1.0 * t_in;
         if (a_tmp >= 3)
         {
             // cout << "test" << endl;
