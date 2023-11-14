@@ -174,6 +174,7 @@ class control_t
 {
 public:
     const float search_dis = 40;
+    float last_dis = 25;
 
     car_self self;
     leader_t leader;

@@ -22,6 +22,8 @@ using namespace std;
 
 chrono::_V2::steady_clock::time_point start_time;
 
+float mpc_filter;
+
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
 Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
@@ -44,7 +46,21 @@ void controller_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
-
+    cout << argc << endl;
+    if (argc == 4)
+    {
+        mpc_filter = atof(argv[2]);
+        car_ctrl.last_dis = atof(argv[3]);
+        cout << "param set" << endl;
+    }
+    else
+    {
+        cout << "using default param" << endl;
+        mpc_filter = 0.02;
+        car_ctrl.last_dis = 22;
+    }
+    cout << "mpc filter: " << mpc_filter << endl;
+    cout << "  last_dis: " << car_ctrl.last_dis << endl;
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 
@@ -135,7 +151,7 @@ void controller_callback(const ros::TimerEvent &e)
     static float a_tmp = 0;
     static int cnt = 0;
     cnt++;
-    if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.013 && abs(car_ctrl.lane.lane_phi) <= 0.001)
+    if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.02 && abs(car_ctrl.lane.lane_phi) <= 0.002)
     {
         // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
         LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
@@ -152,7 +168,7 @@ void controller_callback(const ros::TimerEvent &e)
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), 0.01);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);

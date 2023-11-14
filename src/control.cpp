@@ -530,7 +530,7 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
         // std::cout << "dasfgasdfa" << line_dis[i] << std::endl;
     }
     auto minPos = std::min_element(line_dis.begin(), line_dis.end());
-    if (line_dis[minPos - line_dis.begin()] < 22 && line_dis[minPos - line_dis.begin()] > 2.5)
+    if (line_dis[minPos - line_dis.begin()] < last_dis && line_dis[minPos - line_dis.begin()] > 2.5)
     {
         // self.start_follow = 1;
         return minPos - line_dis.begin();
