@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     // Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
     Q_lat2 << 10, 0, 
               0, 10;
-    R_lat2 << 600;
+    R_lat2 << 300;
 
     LQR_lateral.get_param(Q_lat1, R_lat1, 0.01);
 
@@ -155,6 +155,12 @@ void controller_callback(const ros::TimerEvent &e)
     {
         // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
         LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
+        cout << "change" << endl;
+    }
+    if (car_ctrl.self.p_y > 50 && car_ctrl.self.phi > M_PI * 0.25 && car_ctrl.self.phi < M_PI * 0.75)
+    {
+        LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
+        cout << "fcore change" << endl;
     }
     LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // cout << "k" << LQR_lateral.K << endl;
