@@ -199,7 +199,14 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
         LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
         compute_Linear_mat_with_slack(sc_num);
 
-        solver_init(H_s, grad_s, LB_s, UB_s, L_s, false);
+        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, false))
+        {
+            std::cout << "osqp solver init false" << std::endl;
+        }
+        else
+        {
+            std::cout << "osqp solver init success" << std::endl;
+        }
     }
 #ifdef MPC_LOG
     std::cout << "_A" << std::endl
@@ -247,6 +254,8 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_lo
 
     if (!solver.initSolver())
         return false;
+
+    return true;
 }
 
 void MPC_t::discrete(EMXd A, EMXd B, int type)
