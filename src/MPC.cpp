@@ -497,10 +497,10 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
 
     UB << U_max,
         -U_min,
-        dU_max + W * u_tmp,
-        dU_max - W * u_tmp,
-        // dU_max + W * u_last,
-        // dU_max - W * u_last,
+        // dU_max + W * u_tmp,
+        // dU_max - W * u_tmp,
+        dU_max + W * u_last,
+        dU_max - W * u_last,
         1.5 * one + 0.45 * V_self - E * _A * xk,
         2.5 * one + 0.75 * V_self + E * _A * xk;
 
