@@ -74,6 +74,7 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
+    car_obs.last_dis = 35;
     plotnum = 500;
     visy.resize(plotnum);
     plotx0.resize(plotnum);
@@ -168,6 +169,9 @@ void observe_callback(const ros::TimerEvent &e)
 void car_obs_t::sample_data()
 {
     static int follow_flag = 0;
+    // static int dis_tmp = 0;
+
+    static float dddd = 0;
     float dis_des = 5 + 1.5 * self.v_x;
     frame_sum++;
     if (self.a_x < -5 || self.a_x > 3)
@@ -191,9 +195,13 @@ void car_obs_t::sample_data()
     {
         follow_coef = (leader.line_len - dis_des) / dis_des;
 
-        if (follow_flag == 0 && self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
+        if (self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
         {
             follow_flag = 1;
+        }
+        else
+        {
+            follow_flag = 0;
         }
         if (follow_flag == 1)
         {
@@ -201,8 +209,9 @@ void car_obs_t::sample_data()
             if (follow_coef <= -0.5 || follow_coef >= 0.3)
             {
                 not_idea_cnt++;
+                dddd = leader.line_len;
             }
-            if (follow_coef <= -0.65 || follow_coef >= 0.6)
+            if (follow_coef <= -0.7 || follow_coef >= 0.9)
             {
                 is_complete = 0;
             }
@@ -213,7 +222,9 @@ void car_obs_t::sample_data()
               << " ay_c: " << ay_cnt
               << " jx_c: " << jx_cnt
               << " jy_c: " << jy_cnt
-              << " ni_f: " << not_idea_cnt << std::endl;
+              << " ni_f: " << not_idea_cnt
+              << " fo_c: " << follow_coef
+              << "    d: " << dddd << std::endl;
 #endif
 }
 
