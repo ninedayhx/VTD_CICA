@@ -24,10 +24,12 @@ float degTorad(float deg)
 float kmphTomps(float kmph)
 {
     float mps = kmph / 3.6;
+    return mps;
 }
 float mpsTokmph(float mps)
 {
     float kmph = mps * 3.6;
+    return kmph;
 }
 /***********************************************/
 /*                   构造函数                   */

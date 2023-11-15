@@ -392,6 +392,7 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
 
 bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
 {
+    return false;
 }
 
 /**
