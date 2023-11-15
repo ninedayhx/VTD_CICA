@@ -135,10 +135,10 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
     lane = _lane.lane_locate;
 }
 
-common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg)
+common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float a_filter, float u_filter)
 {
     double u;
-    float alpha = filter_arg;
+    float alpha = a_filter;
     float a_des = a;
     static float a_last = 0;
     static float u_last = 0;
@@ -188,8 +188,8 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
         }
     }
 
-    // u = u * 0.1 + u_last * 0.9;
-    // u_last = u;
+    u = u * u_filter + u_last * (1 - u_filter);
+    u_last = u;
     // std::cout << "u_filter" << u << std::endl;
     u_des = u;
 
@@ -563,6 +563,7 @@ std::vector<common_msgs::Perceptionobject> control_t::find_current_lane_car(std:
             if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
             {
                 tmp.push_back(_car[i]);
+                // std::cout << "cur" << _car[i].x << std::endl;
             }
             // std::cout << "cur" << _car[i].x << std::endl;
         }
@@ -647,7 +648,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     }
     lon_a_des = u;
 
-    return self.acc_to_Thr_and_Bra(u, 1);
+    return self.acc_to_Thr_and_Bra(u, 1, 1);
 }
 
 /**
@@ -759,6 +760,20 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
 void control_t::update_state_vec()
 {
     self.L_des = 5 + 1.5 * self.v_x;
+
+    if ((self.p_x <= 460) && car_cur.size() >= 2)
+    {
+
+        self.L_des -= 7;
+        // std::cout << "cur_num" << car_cur.size() << std::endl;
+
+        // std::cout << "cur_dis1:" << pow(pow(car_cur[0].x, 2) + pow(car_cur[0].y, 2), 0.5) << std::endl;
+        // std::cout << "cur_dis2:" << pow(pow(car_cur[1].x, 2) + pow(car_cur[1].y, 2), 0.5) << std::endl;
+    }
+    else
+    {
+        // std::cout << "cur_num" << car_cur.size() << std::endl;
+    }
 
     x_k(0) = leader.line_len - self.L_des;
     x_k(1) = leader.v_x - self.v_x;

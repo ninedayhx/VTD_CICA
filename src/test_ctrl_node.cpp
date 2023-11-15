@@ -22,7 +22,7 @@ using namespace std;
 
 chrono::_V2::steady_clock::time_point start_time;
 
-float mpc_filter;
+float mpc_filter, thr_filter;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
@@ -47,19 +47,22 @@ void controller_callback(const ros::TimerEvent &e);
 int main(int argc, char **argv)
 {
     cout << argc << endl;
-    if (argc == 4)
+    if (argc == 5)
     {
         mpc_filter = atof(argv[2]);
-        car_ctrl.last_dis = atof(argv[3]);
+        thr_filter = atof(argv[3]);
+        car_ctrl.last_dis = atof(argv[4]);
         cout << "param set" << endl;
     }
     else
     {
         cout << "using default param" << endl;
         mpc_filter = 0.02;
+        thr_filter = 0.1;
         car_ctrl.last_dis = 25;
     }
     cout << "mpc filter: " << mpc_filter << endl;
+    cout << "thr filter: " << thr_filter << endl;
     cout << "  last_dis: " << car_ctrl.last_dis << endl;
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
@@ -175,7 +178,7 @@ void controller_callback(const ros::TimerEvent &e)
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter, thr_filter);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);
