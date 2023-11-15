@@ -22,8 +22,12 @@ using namespace std;
 
 chrono::_V2::steady_clock::time_point start_time;
 
+float mpc_filter;
+
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
+Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
+Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
 MPC_follow_t *mpc_lon;
 
 common_msgs::Control_Test ctrl_msg;
@@ -42,14 +46,32 @@ void controller_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
-
+    cout << argc << endl;
+    if (argc == 4)
+    {
+        mpc_filter = atof(argv[2]);
+        car_ctrl.last_dis = atof(argv[3]);
+        cout << "param set" << endl;
+    }
+    else
+    {
+        cout << "using default param" << endl;
+        mpc_filter = 0.02;
+        car_ctrl.last_dis = 25;
+    }
+    cout << "mpc filter: " << mpc_filter << endl;
+    cout << "  last_dis: " << car_ctrl.last_dis << endl;
     // clang-format off
-    Eigen::MatrixXf Q_lat(2, 2), R_lat(1, 1);
-    Q_lat << 10, 0, 
-             0, 10;
-    R_lat << 60;
+    // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
+    Q_lat1 <<10, 0, 
+             0,10;
+    R_lat1 <<50000;
+    // Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
+    Q_lat2 << 10, 0, 
+              0, 10;
+    R_lat2 << 300;
 
-    LQR_lateral.get_param(Q_lat, R_lat, 0.01);
+    LQR_lateral.get_param(Q_lat1, R_lat1, 0.01);
 
     Eigen::MatrixXf Q_lon(3, 3), R_lon(1, 1);
     Q_lon << 60, 0,  0,
@@ -71,7 +93,7 @@ int main(int argc, char **argv)
     Q_mpc << 100,0,0,
              0,100,0,
              0,0,100;
-    R_mpc << 1;
+    R_mpc << 5;
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
     // clang-format on
@@ -95,7 +117,7 @@ int main(int argc, char **argv)
 
     start_time = std::chrono::steady_clock::now();
 
-    LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
+    // LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
     // LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
 
@@ -126,28 +148,55 @@ void lane_callback(const common_msgs::Lanes &msg)
 
 void controller_callback(const ros::TimerEvent &e)
 {
+    static float a_tmp = 0;
 
-    /*
-        预赛规则
-    */
+    // static int cnt = 0;
+    // cnt++;
+    // if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.02 && abs(car_ctrl.lane.lane_phi) <= 0.002)
+    // {
+    //     // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
+    //     LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
+    //     // cout << "change" << endl;
+    // }
+    if (car_ctrl.self.p_y > 45 && car_ctrl.self.phi > M_PI * 0.25 && car_ctrl.self.phi < M_PI * 0.75)
+    {
+        LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
+        // cout << "force change" << endl;
+    }
+    LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
+    // cout << "k" << LQR_lateral.K << endl;
+
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
-        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true);
+        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true, (double)car_ctrl.self.a_x);
 
         if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), true);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), true);
+        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);
 
         // cout << "following...  self lane: " << car_ctrl.lane.lane_locate << " leader lane: " << car_ctrl.leader.lane << endl;
     }
     else
     {
+        // float t_in = 0.01;
+        // a_tmp = a_tmp + 2.0 * t_in;
+        // if (a_tmp >= 3)
+        // {
+        //     // cout << "test" << endl;
+        //     a_tmp = 3;
+        // }
+        // car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+        // if (car_ctrl.lon_v_des >= 30)
+        // {
+        //     // cout << "test" << endl;
+        //     car_ctrl.lon_v_des = 30;
+        // }
         car_ctrl.lon_v_des = 30;
         ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
         // cout << "no leader, self speed... lane = " << endl;
@@ -160,12 +209,21 @@ void controller_callback(const ros::TimerEvent &e)
     ctrl_pub.publish(ctrl_msg);
 
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(8);
+    dmsg.data.resize(14);
     dmsg.data[0] = car_ctrl.x_k(0);
     dmsg.data[1] = car_ctrl.x_k(1);
     dmsg.data[2] = car_ctrl.x_k(2);
     dmsg.data[3] = (float)mpc_lon->u_apply(0);
-    dmsg.data[4] = car_ctrl.self.a_x;
-    dmsg.data[5] = car_ctrl.self.j_x;
+    dmsg.data[4] = car_ctrl.self.a_des_f;
+    dmsg.data[5] = car_ctrl.self.u_des;
+    dmsg.data[6] = car_ctrl.self.a_x;
+    dmsg.data[7] = car_ctrl.self.j_x;
+    dmsg.data[8] = car_ctrl.leader.a_x;
+    dmsg.data[9] = car_ctrl.self.a_x;
+    dmsg.data[10] = mpc_lon->du;
+    dmsg.data[11] = kmphTomps(car_ctrl.lon_v_des);
+    dmsg.data[12] = car_ctrl.self.v_x;
+    dmsg.data[13] = car_ctrl.lon_a_des;
+
     debug_pub.publish(dmsg);
 }

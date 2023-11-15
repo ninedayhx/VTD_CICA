@@ -29,6 +29,8 @@
 
 float radTodeg(float rad);
 float degTorad(float deg);
+float kmphTomps(float rad);
+float mpsTokmph(float rad);
 
 /**
  * @brief 车辆原始信息类
@@ -119,14 +121,24 @@ public:
 class car_self : public car_t
 {
 public:
-    const float car_front_len = 3.647;                   // 车辆后轴到前保险杠距离
-    const float max_delta = 15;                          // 最大转向角
-    const float max_steer_angle = 540;                   // 最大方向盘转角
-    const float l_fr = 2.691;                            // 轴距
-    const float p[6] = {0.01883, -0.0002959, -0.005006,  //
-                        0.0003868, 0.03745, -0.0004034}; // 加速度-油门的对应系数
-                                                         //
-    float L_des;                                         // 跟车间距
+    const float car_front_len = 3.647; // 车辆后轴到前保险杠距离
+    const float max_delta = 15;        // 最大转向角
+    const float max_steer_angle = 540; // 最大方向盘转角
+    const float l_fr = 2.691;          // 轴距
+    const double p[6] = {0.01883,      //
+                         -0.0002959,   //
+                         -0.005006,    //
+                         0.0003868,    //
+                         0.03745,      //
+                         -0.0004034};  // 加速度-油门的对应系数
+                                       // const double q[3] = {0.02279,
+                                       //                      0.0002106,
+                                       //                      0.1819};
+    const double q[3] = {0.01891,
+                         0.0002017,
+                         0.1829};
+    float L_des; // 跟车间距
+    float a_des_f;
 
     // state
     int start_follow;
@@ -134,7 +146,7 @@ public:
 
     car_self();
     void update(const common_msgs::CICV_Location &msg, lane_param _lane);
-    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, bool en_filter);
+    common_msgs::Control_Test acc_to_Thr_and_Bra(float a_des, float filter_arg);
     bool is_in_destination();
 };
 
@@ -161,9 +173,12 @@ public:
 class control_t
 {
 public:
+    const float search_dis = 40;
+    float last_dis = 25;
+
     car_self self;
     leader_t leader;
-    std::vector<common_msgs::Perceptionobject> car_cur;
+    std::vector<common_msgs::Perceptionobject> car_cur, car_oth;
     obtacle obt;
     lane_param lane;
 
@@ -180,10 +195,14 @@ public:
 
     void leader_update();
     void is_lane_changing();
+    int is_lane_changing(std::vector<common_msgs::Perceptionobject> _car);
+
     int is_cutinto(common_msgs::Perceptionobject _car);
     void is_cutout();
     int find_the_latest(std::vector<common_msgs::Perceptionobject> _car);
     std::vector<common_msgs::Perceptionobject> find_current_lane_car(std::vector<common_msgs::Perceptionobject> _car);
+    std::vector<common_msgs::Perceptionobject> find_other_lane_car(std::vector<common_msgs::Perceptionobject> _car);
+
     void update_state_vec();
 
     common_msgs::Control_Test lon_speed_control(float speed_des);

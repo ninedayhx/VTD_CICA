@@ -21,6 +21,14 @@ float degTorad(float deg)
     float rad = deg / 180.0f * M_PI;
     return rad;
 }
+float kmphTomps(float kmph)
+{
+    float mps = kmph / 3.6;
+}
+float mpsTokmph(float mps)
+{
+    float kmph = mps * 3.6;
+}
 /***********************************************/
 /*                   构造函数                   */
 /***********************************************/
@@ -28,8 +36,8 @@ control_t::control_t()
 {
     sim_err_mod.A.resize(2, 2);
     sim_err_mod.B.resize(2, 1);
-    sim_err_mod.A << 0, 0, 30, 0;
-    sim_err_mod.B << 30 / 2.7, 0;
+    sim_err_mod.A << 0, 0, 25 / 3.6, 0;
+    sim_err_mod.B << 25 / 3.6 / 2.7, 0;
 
     // clang-format off
     float T_delay = 0.01;
@@ -125,42 +133,63 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
     lane = _lane.lane_locate;
 }
 
-common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a_des, bool en_filter)
+common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg)
 {
-    float u;
-    float alpha = 0.1;
+    double u;
+    float alpha = filter_arg;
+    float a_des = a;
     static float a_last = 0;
+    static float u_last = 0;
 
-    if (en_filter)
-    {
-        a_des = alpha * a_des + (1 - alpha) * a_last;
-    }
+    a_des = alpha * a_des + (1 - alpha) * a_last;
     a_last = a_des;
+    a_des_f = a_des;
 
     if (a_des >= 0)
     {
         if (v_x < 5 && v_x >= 0)
         {
-            u = a_des / 5.4;
+            u = q[0] + q[1] * (double)v_x + q[2] * (double)a_des;
         }
         else
         {
-            u = p[0] + p[1] * v_x + p[2] * a_des +
-                p[3] * v_x * v_x + p[4] * v_x * a_des + p[5] * a_des * a_des;
+            if (a_des >= 0.05)
+            {
+                u = p[0] + p[1] * (double)v_x + p[2] * (double)a_des +
+                    p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_des + p[5] * (double)a_des * (double)a_des;
+                // std::cout << "sur = 2" << std::endl;
+            }
+            else if (a_des < 0.05 && a_des >= 0)
+            {
+                float a_tmp = 0.05;
+                double u_tmp;
+                u_tmp = p[0] + p[1] * (double)v_x + p[2] * (double)a_tmp +
+                        p[3] * (double)v_x * (double)v_x + p[4] * (double)v_x * (double)a_tmp + p[5] * (double)a_tmp * (double)a_tmp;
+                u = a_des / a_tmp * u_tmp;
+            }
+            // std::cout << "test 2"
+            //           << " a_des " << a_des << " u " << u << std::endl;
         }
     }
     if (a_des < 0)
     {
-        if (v_x >= 0.01)
+        if (v_x >= 0.5)
         {
-            u = a_des / (float)10;
+            u = a_des / 10.0;
+            // std::cout << "test3"
+            //           << "a_des" << a_des << " u " << u << std::endl;
         }
         else
         {
             u = 0;
+            // std::cout << "test4" << std::endl;
         }
     }
-    u_des = a_des;
+
+    // u = u * 0.1 + u_last * 0.9;
+    // u_last = u;
+    // std::cout << "u_filter" << u << std::endl;
+    u_des = u;
 
     common_msgs::Control_Test msg;
     if (u >= 0)
@@ -248,8 +277,9 @@ void lane_param::update(const common_msgs::Lanes &msg)
     {
         std::cout << "lane_err" << tmp_cnt << std::endl;
     }
-    lane_phi = -atan(lane[1].c1);                       // 后轴与车道线夹角
-    lane_phi_forward = -2 * lane[1].c2 * car_front_len; // 车头与车道线夹角
+    lane_phi = -atan(lane[1].c1); // 后轴与车道线夹角
+    // lane_phi_forward = -2 * lane[1].c2 * car_front_len; // 车头与车道线夹角
+    lane_phi_forward = compute_lane_rel_angle(car_front_len + 3.0, 1);
 
 #ifdef LANE_LOG
     for (int j = 0; j < 4; j++)
@@ -322,13 +352,31 @@ void control_t::leader_update()
         // 如果当前车道前30米无车，且侧道30内有车，切换侧道里将要变道的车作为leader
         // 前方有车，跟车，跟车过程中，被跟车切出，则找到当前车道第二远的车作为leader车
         car_cur = find_current_lane_car(obt.car);
-        // std::cout << "stttt" << car_cur.size() << std::endl;
+        car_oth = find_other_lane_car(obt.car);
+
+        // int tmp = is_lane_changing(car_cur);
+        int oth_itr = is_lane_changing(car_oth);
         int itr = find_the_latest(car_cur);
-        // std::cout << "itr :" << itr << std::endl;
-        if (itr >= 0 && self.start_follow == 1)
+
+        if (itr >= 0)
         {
+            // std::cout << "car_cur" << std::endl;
+            self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
         }
+        else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
+        {
+            // std::cout << "car_oth" << std::endl;
+            self.start_follow = 1;
+            leader.update(car_oth[oth_itr], lane, self);
+        }
+        else
+        {
+            // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
+            self.start_follow = 0;
+        }
+        // std::cout << "stttt" << car_cur.size() << std::endl;
+        // std::cout << "itr :" << itr << std::endl;
     }
 }
 
@@ -388,6 +436,23 @@ void control_t::is_lane_changing()
     {
         std::cout << "leader lane err" << std::endl;
     }
+}
+
+int control_t::is_lane_changing(std::vector<common_msgs::Perceptionobject> _car)
+{
+    float lane_y, carxl_abs_ang, car_l_rel_ang;
+    for (int i = 0; i < _car.size(); i++)
+    {
+        carxl_abs_ang = atan(lane.compute_lane_rel_angle(_car[i].x, 1)) + self.phi; // rad
+        car_l_rel_ang = _car[i].heading - carxl_abs_ang;                            // rad
+
+        if (abs(radTodeg(car_l_rel_ang)) > 3) // deg
+        {
+            // std::cout << "rel_ang" << radTodeg(car_l_rel_ang) << " dis " << pow(_car[i].x, 2) + pow(_car[i].y, 2) << std::endl;
+            return i;
+        }
+    }
+    return -1;
 }
 
 int control_t::is_cutinto(common_msgs::Perceptionobject _car)
@@ -451,7 +516,7 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
     int num = _car.size();
     if (num <= 0)
     {
-        self.start_follow = 0;
+        // self.start_follow = 0;
         return -1;
     }
     int p = 0;
@@ -465,14 +530,14 @@ int control_t::find_the_latest(std::vector<common_msgs::Perceptionobject> _car)
         // std::cout << "dasfgasdfa" << line_dis[i] << std::endl;
     }
     auto minPos = std::min_element(line_dis.begin(), line_dis.end());
-    if (line_dis[minPos - line_dis.begin()] < 25 && line_dis[minPos - line_dis.begin()] > 2.5)
+    if (line_dis[minPos - line_dis.begin()] < last_dis && line_dis[minPos - line_dis.begin()] > 2.5)
     {
-        self.start_follow = 1;
+        // self.start_follow = 1;
         return minPos - line_dis.begin();
     }
     else
     {
-        self.start_follow = 0;
+        // self.start_follow = 0;
         return -1;
     }
 }
@@ -482,25 +547,61 @@ std::vector<common_msgs::Perceptionobject> control_t::find_current_lane_car(std:
     // float dis_y = lane.compute_lane_y(dis + lane.car_front_len, 1);
     // float dis_k = lane.compute_lane_rel_angle(dis + lane.car_front_len, 1);
     int car_num = _car.size();
-    float lane_y = 0;
+    float lane1_y = 0;
+    float lane2_y = 0;
+
     std::vector<common_msgs::Perceptionobject> tmp;
     for (int i = 0; i < car_num; i++)
     {
-        if (self.lane == 1)
+        lane1_y = lane.compute_lane_y(_car[i].x, 1);
+        lane2_y = lane.compute_lane_y(_car[i].x, 2);
+
+        if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
         {
-            lane_y = lane.compute_lane_y(_car[i].x, 2);
-            if (lane_y <= _car[i].y && _car[i].x > lane.car_front_len)
+            if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
             {
                 tmp.push_back(_car[i]);
+            }
+            // std::cout << "cur" << _car[i].x << std::endl;
+        }
+    }
+    // std::cout << "car_curnum: " << tmp.size() << std::endl;
+    return tmp;
+}
+
+std::vector<common_msgs::Perceptionobject> control_t::find_other_lane_car(std::vector<common_msgs::Perceptionobject> _car)
+{
+    // float dis_y = lane.compute_lane_y(dis + lane.car_front_len, 1);
+    // float dis_k = lane.compute_lane_rel_angle(dis + lane.car_front_len, 1);
+    int car_num = _car.size();
+    float lane1_y = 0;
+    float lane2_y = 0;
+
+    std::vector<common_msgs::Perceptionobject> tmp;
+    for (int i = 0; i < car_num; i++)
+    {
+        if (lane.lane_locate == 1)
+        {
+            lane1_y = lane.compute_lane_y(_car[i].x, 2);
+            lane2_y = lane.compute_lane_y(_car[i].x, 3);
+
+            if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
+            {
+                if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
+                    tmp.push_back(_car[i]);
                 // std::cout << "cur" << _car[i].x << std::endl;
             }
         }
-        else if (self.lane == 2)
+        else if (lane.lane_locate == 2)
         {
-            lane_y = lane.compute_lane_y(_car[i].x, 1);
-            if (lane_y >= _car[i].y && _car[i].x > lane.car_front_len)
+            lane1_y = lane.compute_lane_y(_car[i].x, 0);
+            lane2_y = lane.compute_lane_y(_car[i].x, 1);
+
+            if (lane1_y >= _car[i].y && lane2_y <= _car[i].y && _car[i].x > lane.car_front_len)
             {
-                tmp.push_back(_car[i]);
+                if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
+                    tmp.push_back(_car[i]);
+                // std::cout << "cur" << _car[i].x << std::endl;
             }
         }
         else
@@ -542,8 +643,9 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     {
         u = 2.9;
     }
+    lon_a_des = u;
 
-    return self.acc_to_Thr_and_Bra(u, true);
+    return self.acc_to_Thr_and_Bra(u, 1);
 }
 
 /**
@@ -560,9 +662,9 @@ float control_t::lane_keep_LQR_control(LQR _lqr)
     err_dis = lane.lane_center_err;
 
     float u_delta = -_lqr.K(0, 0) * err_phi - _lqr.K(0, 1) * err_dis;
-    float u_delta_forward = lane.lane_phi_forward;
-    float u_angle = u_delta - self.v_x / self.l_fr * lane.lane_phi_forward;
-    u_angle = radTodeg(u_delta); // rad to deg
+    // float u_delta_forward = tan(lane.lane_phi_forward);
+    // float u_angle = u_delta - self.v_x / self.l_fr * u_delta_forward;
+    float u_angle = radTodeg(atan(u_delta)) + self.v_x / self.l_fr * lane.lane_phi_forward; // rad to deg
 
     // 输出限制
     if (u_angle > self.max_delta)

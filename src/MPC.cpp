@@ -84,6 +84,7 @@
  * @param Np_
  * @param constraint_type   1 for hard constraint
  *                          2 for soft constraint
+ * @param sc_num soft constraint num
  */
 MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num)
 {
@@ -179,6 +180,8 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
+    epsilon.resize(3);
+
     H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
     grad_s.resize(grad.rows() + sc_num);
     L_s.resize(L.rows() + sc_num, L.cols() + sc_num);
@@ -196,7 +199,14 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
         LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
         compute_Linear_mat_with_slack(sc_num);
 
-        solver_init(H_s, grad_s, LB_s, UB_s, L_s, false);
+        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, false))
+        {
+            std::cout << "osqp solver init false" << std::endl;
+        }
+        else
+        {
+            std::cout << "osqp solver init success" << std::endl;
+        }
     }
 #ifdef MPC_LOG
     std::cout << "_A" << std::endl
@@ -244,6 +254,8 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_lo
 
     if (!solver.initSolver())
         return false;
+
+    return true;
 }
 
 void MPC_t::discrete(EMXd A, EMXd B, int type)
@@ -364,8 +376,11 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
     one_2np.setOnes();
 
     tmp_uf.resize(L.rows(), sc_num);
-    tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
-    tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    // tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
+    // tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    // 将u和du改为硬约束
+    tmp_uf.block(0, 0, 2 * m, 1).setZero();
+    tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
     tmp_uf.block(4 * m, 2, 2 * Np, 1) = one_2np;
 
     tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
@@ -420,7 +435,8 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     switch (err_flag)
     {
     case OsqpEigen::ErrorExitFlag::NoError:
-        // std::cout << "solver ok" << std::endl;
+        // std::cout << solver.workspace()->info->solve_time << std::endl;
+        // std::cout << solver.workspace()->info->status << std::endl;
         break;
     case OsqpEigen::ErrorExitFlag::DataValidationError:
         std::cout << "DataValidationError" << std::endl;
@@ -454,6 +470,8 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
 
     U_solve = solver.getSolution();
     u_apply = U_solve.block(0, 0, m, 1);
+    epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
+    du = u_apply(0) - u_last(0);
     u_last = u_apply;
 
 #ifdef MPC_LOG
@@ -464,26 +482,36 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     return true;
 }
 
-void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_soft)
+void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_soft, double a_last)
 {
     UB.resize(4 * Np * m + 2 * Np);
 
-    EVXd one;
+    EVXd one, u_tmp;
     one.resize(Np);
+    u_tmp.resize(m);
+    u_tmp(0) = a_last;
     one = one.setOnes();
     V_self.resize(Np);
     V_self = v * V_self.setOnes();
 
     UB << U_max,
         -U_min,
-        dU_max + W * u_last,
-        dU_max - W * u_last,
+        dU_max + W * u_tmp,
+        dU_max - W * u_tmp,
+        // dU_max + W * u_last,
+        // dU_max - W * u_last,
         1.5 * one + 0.45 * V_self - E * _A * xk,
         2.5 * one + 0.75 * V_self + E * _A * xk;
 
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;
 
+    // std::cout
+    //     << "UB:" << std::endl
+    //     << U_max(0) << std::endl
+    //     << -U_min(0) << std::endl
+    //     << (dU_max + W * u_last)(0) << std::endl
+    //     << (1.5 * one + 0.45 * V_self - E * _A * xk)(0) << std::endl;
 #ifdef MPC_LOG
     std::cout
         << "U_max:" << std::endl
