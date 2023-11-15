@@ -54,7 +54,7 @@ public:
                                           //
     ESMd H_s, L_s;                        // 软约束后的hessian和线性约束矩阵
     EVXd grad_s, LB_s, UB_s;              // 软约束
-    const double rho[3] = {0, 0, 1};      //
+    const double rho[3] = {1, 1, 1};      //
     EVXd epsilon;                         //
     double max_ub, min_ub, dm_ub, dis_ub; //
                                           //

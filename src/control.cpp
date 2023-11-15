@@ -563,7 +563,6 @@ std::vector<common_msgs::Perceptionobject> control_t::find_current_lane_car(std:
             if (pow(_car[i].x, 2) + pow(_car[i].y, 2) < search_dis * search_dis)
             {
                 tmp.push_back(_car[i]);
-                // std::cout << "cur" << _car[i].x << std::endl;
             }
             // std::cout << "cur" << _car[i].x << std::endl;
         }
@@ -764,7 +763,7 @@ void control_t::update_state_vec()
     if ((self.p_x <= 460) && car_cur.size() >= 2)
     {
 
-        self.L_des -= 7;
+        self.L_des -= 6;
         // std::cout << "cur_num" << car_cur.size() << std::endl;
 
         // std::cout << "cur_dis1:" << pow(pow(car_cur[0].x, 2) + pow(car_cur[0].y, 2), 0.5) << std::endl;

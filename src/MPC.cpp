@@ -232,6 +232,13 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_lo
 {
     solver.settings()->setWarmStart(true);
     solver.settings()->setVerbosity(is_log);
+    // solver.settings()->setMaxIteration(10000);
+    solver.settings()->setTimeLimit(0.005);
+    solver.settings()->setAbsoluteTolerance(0.1);
+    solver.settings()->setRelativeTolerance(0.1);
+    solver.settings()->setPrimalInfeasibilityTolerance(0.01);
+    solver.settings()->setDualInfeasibilityTolerance(0.01);
+    solver.settings()->setDelta(0.001);
 
     if (solver.data()->isSet())
     {
@@ -376,16 +383,16 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
     one_2np.setOnes();
 
     tmp_uf.resize(L.rows(), sc_num);
-    // tmp_uf.block(0, 0, 2 * m, 1) = one_2m;
-    // tmp_uf.block(2 * m, 1, 2 * m, 1) = one_2m;
+    tmp_uf.block(0, 0, 2 * m, 1) = -1.0 * one_2m;
+    tmp_uf.block(2 * m, 1, 2 * m, 1) = -1.0 * one_2m;
     // 将u和du改为硬约束
-    tmp_uf.block(0, 0, 2 * m, 1).setZero();
-    tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
-    tmp_uf.block(4 * m, 2, 2 * Np, 1) = one_2np;
+    // tmp_uf.block(0, 0, 2 * m, 1).setZero();
+    // tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
+    tmp_uf.block(4 * m, 2, 2 * Np, 1) = -1.0 * one_2np;
 
     tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
     tmp.block(0, L.cols(), L.rows(), sc_num) = tmp_uf;
-    tmp.block(L.rows(), L.cols(), sc_num, sc_num) = ident;
+    tmp.block(L.rows(), L.cols(), sc_num, sc_num) = -1.0 * ident;
 
     L_s = tmp.sparseView();
 }
@@ -437,7 +444,15 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
     {
     case OsqpEigen::ErrorExitFlag::NoError:
         // std::cout << solver.workspace()->info->solve_time << std::endl;
-        // std::cout << solver.workspace()->info->status << std::endl;
+        if (strcmp(solver.workspace()->info->status, "solved"))
+        {
+            std::cout << solver.workspace()->info->status << std::endl;
+            std::cout << solver.workspace()->info->solve_time << std::endl;
+        }
+        else
+        {
+            std::cout << solver.workspace()->info->solve_time << std::endl;
+        }
         break;
     case OsqpEigen::ErrorExitFlag::DataValidationError:
         std::cout << "DataValidationError" << std::endl;

@@ -57,8 +57,8 @@ int main(int argc, char **argv)
     else
     {
         cout << "using default param" << endl;
-        mpc_filter = 0.02;
-        thr_filter = 0.1;
+        mpc_filter = 1;
+        thr_filter = 1;
         car_ctrl.last_dis = 25;
     }
     cout << "mpc filter: " << mpc_filter << endl;
