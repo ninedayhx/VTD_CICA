@@ -1,0 +1,38 @@
+%YAML:1.0
+---
+mpc:
+  Q: [500.0 ,0.0 ,0.0,
+      0.0, 500.0, 0.0,
+      0.0, 0.0, 500.0  ]
+  R: 0.1
+  Np: 80
+  rho: [0, 0, 0]
+osqp: 
+  default: 0
+  solver: 0
+  log: 0
+  warmstart: 1
+  scaling: 10
+  polish: 0
+  rho: 0.1
+  sigma: 0.001
+  alpha: 1.6
+  adarho: 1
+  adarhoint: 0
+  adarhofrac: 0.4
+  adarhotol: 5.0
+  miter: 10000
+  atol: 0.1
+  rtol: 0.1
+  pitol: 0.01
+  ditol: 0.01
+  scalter: 0
+  checkter: 25
+  timelim: 0.005
+  priter: 3
+ctrl:
+  bias1: -5.0
+  bias2: 2.0
+  mpc_filter: 1.0
+  thr_filter: 1.0
+  last_dis: 25.0

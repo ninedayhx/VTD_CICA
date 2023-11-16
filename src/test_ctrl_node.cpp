@@ -11,8 +11,10 @@
 
 // ros
 #include <ros/ros.h>
+#include <ros/package.h>
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float32MultiArray.h"
+#include "yaml-cpp/yaml.h"
 
 #include "control.h"
 
@@ -23,6 +25,7 @@ using namespace std;
 chrono::_V2::steady_clock::time_point start_time;
 
 float mpc_filter, thr_filter;
+YAML::Node mpc_cfg;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
@@ -43,9 +46,16 @@ void location_callback(const common_msgs::CICV_Location &msg);
 void obstacle_callback(const common_msgs::Perceptionobjects &msg);
 void lane_callback(const common_msgs::Lanes &msg);
 void controller_callback(const ros::TimerEvent &e);
+YAML::Node load_params(string path);
 
 int main(int argc, char **argv)
 {
+    // yaml 需要使用空格缩进
+    string cfg_path = ros::package::getPath("test_ctrl") + "/cfg/mpccfg.yaml";
+    mpc_cfg = load_params(cfg_path);
+    YAML::Node osqp_cfg = mpc_cfg["osqp"];
+    cout << osqp_cfg << endl;
+
     cout << argc << endl;
     if (argc == 5)
     {
@@ -86,7 +96,7 @@ int main(int argc, char **argv)
     Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
 
     Q_lon_du << 75,  0,  0,   0,
-                0,   1, 0,   0,
+                0,   1,  0,   0,
                 0,   0,  1,  0,
                 0,   0,  0,   1000;
     R_lon_du << 500;
@@ -97,6 +107,18 @@ int main(int argc, char **argv)
              0,100,0,
              0,0,100;
     R_mpc << 5;
+    const vector<double> QVec = mpc_cfg["mpc"]["Q"].as<vector<double>>();
+    Q_mpc(0,0) = QVec[0];
+    Q_mpc(1,1) = QVec[4];
+    Q_mpc(2,2) = QVec[8];
+    R_mpc(0,0) = mpc_cfg["mpc"]["R"].as<double>();
+    Eigen::VectorXd Rho;
+    Rho.resize(3);
+    const vector<double> rhoVec = mpc_cfg["mpc"]["rho"].as<vector<double>>();
+    for(int i=0; i<3; i++)
+    {
+        Rho(i) = rhoVec[i];
+    }
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
 
@@ -104,7 +126,11 @@ int main(int argc, char **argv)
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
-                               80, 2, 3);
+                               Rho,
+                               mpc_cfg["mpc"]["Np"].as<int>(), 
+                               2, 
+                               3,
+                               osqp_cfg);
 
     // Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
     // Q_sp << 0, 0, 0,
@@ -257,4 +283,21 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[13] = mpc_lon->epsilon[2];
 
     debug_pub.publish(dmsg);
+}
+
+YAML::Node load_params(string path)
+{
+    YAML::Node tmp;
+    try
+    {
+        cout << "cfg path:" << path << endl;
+        tmp = YAML::LoadFile(path);
+        return tmp;
+    }
+    catch (YAML::ParserException)
+    {
+        cout << "config file no found, check first" << endl;
+        tmp = YAML::Load("{0}");
+        return tmp;
+    }
 }

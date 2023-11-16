@@ -87,7 +87,7 @@
  *                          2 for soft constraint
  * @param sc_num            slack var num
  */
-MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num)
+MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, int constraint_type, int sc_num, YAML::Node cfg)
 {
     Np = Np_;
 
@@ -132,6 +132,9 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     }
 
     std::cout << " MPC n: " << n << " m: " << m << " Np: " << Np << std::endl;
+    std::cout << " Q: " << Q << std::endl;
+    std::cout << " R: " << R << std::endl;
+    std::cout << " Rho: " << _rho << std::endl;
 
     _H.resize(m * Np, m * Np);
     grad.resize(m * Np);
@@ -181,6 +184,8 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
+    rho.resize(sc_num);
+    rho = _rho;
     epsilon.resize(3);
 
     H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
@@ -195,7 +200,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     }
     else if (constraint_type == 1)
     {
-        solver_init(_H, grad, LB, UB, L, false);
+        solver_init(_H, grad, LB, UB, L, cfg, false);
     }
     else if (constraint_type == 2)
     {
@@ -204,7 +209,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
         LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
         compute_Linear_mat_with_slack(sc_num);
 
-        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, false))
+        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, cfg, false))
         {
             std::cout << "osqp solver init false" << std::endl;
         }
@@ -253,7 +258,7 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
     solver.settings()->setAdaptiveRhoInterval(0);
     solver.settings()->setAdaptiveRhoFraction(0.4);
     solver.settings()->setAdaptiveRhoTolerance(5);
-    solver.settings()->setMaxIteration(100000);
+    solver.settings()->setMaxIteration(4000);
     solver.settings()->setAbsoluteTolerance(0.001);
     solver.settings()->setRelativeTolerance(0.001);
     solver.settings()->setPrimalInfeasibilityTolerance(0.0001);
@@ -283,36 +288,44 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
     return true;
 }
 
-bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log)
+bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, YAML::Node cfg, bool is_log)
 {
-    // clang-format off
+    assert(cfg.IsMap());
+    if (cfg["default"].as<int>() == 1)
+    {
+        solver.settings()->setVerbosity(cfg["log"].as<int>());
+        solver.settings()->setWarmStart(cfg["warmstart"].as<int>());
+    }
+    else
+    {
+        // clang-format off
+        solver.settings()->setLinearSystemSolver(cfg["solver"].as<int>());
+        solver.settings()->setVerbosity(cfg["log"].as<int>());
+        solver.settings()->setWarmStart(cfg["warmstart"].as<int>());
+        solver.settings()->setScaling(cfg["scaling"].as<int>());
+        solver.settings()->setPolish(cfg["polish"].as<int>());
+        solver.settings()->setRho(cfg["rho"].as<double>());
 
-    solver.settings()->setLinearSystemSolver(QDLDL_SOLVER);
-    solver.settings()->setVerbosity(is_log);
-    solver.settings()->setWarmStart(false);
-    solver.settings()->setScaling(10);
-    solver.settings()->setPolish(false);
-    solver.settings()->setRho(0.1);
-
-    solver.settings()->setSigma(1e-06);
-    solver.settings()->setAlpha(1.6);
+        solver.settings()->setSigma(cfg["sigma"].as<double>());
+        solver.settings()->setAlpha(cfg["alpha"].as<double>());
 
 
 
-    solver.settings()->setAdaptiveRho(true);
-    solver.settings()->setAdaptiveRhoInterval(0);
-    solver.settings()->setAdaptiveRhoFraction(0.4);
-    solver.settings()->setAdaptiveRhoTolerance(5);
-    solver.settings()->setMaxIteration(4000);
-    solver.settings()->setAbsoluteTolerance(0.001);
-    solver.settings()->setRelativeTolerance(0.001);
-    solver.settings()->setPrimalInfeasibilityTolerance(0.0001);
-    solver.settings()->setDualInfeasibilityTolerance(0.0001);
-    solver.settings()->setScaledTerimination(false);
-    solver.settings()->setCheckTermination(25);
-    solver.settings()->setTimeLimit(1e+10);
-    solver.settings()->setPolishRefineIter(3);
-    // clang-format on
+        solver.settings()->setAdaptiveRho(cfg["adarho"].as<int>());
+        solver.settings()->setAdaptiveRhoInterval(cfg["adarhoint"].as<int>());
+        solver.settings()->setAdaptiveRhoFraction(cfg["adarhofrac"].as<double>());
+        solver.settings()->setAdaptiveRhoTolerance(cfg["adarhotol"].as<double>());
+        solver.settings()->setMaxIteration(cfg["miter"].as<int>());
+        solver.settings()->setAbsoluteTolerance(cfg["atol"].as<double>());
+        solver.settings()->setRelativeTolerance(cfg["rtol"].as<double>());
+        solver.settings()->setPrimalInfeasibilityTolerance(cfg["pitol"].as<double>());
+        solver.settings()->setDualInfeasibilityTolerance(cfg["ditol"].as<double>());
+        solver.settings()->setScaledTerimination(cfg["scalter"].as<int>());
+        solver.settings()->setCheckTermination(cfg["checkter"].as<int>());
+        solver.settings()->setTimeLimit(cfg["timelim"].as<double>());
+        solver.settings()->setPolishRefineIter(cfg["priter"].as<int>());
+        // clang-format on
+    }
 
     if (solver.data()->isSet())
     {
@@ -419,7 +432,7 @@ void MPC_t::compute_Hessian_with_slack(int sc_num)
     diag_rho.resize(sc_num, sc_num);
     for (int i = 0; i < sc_num; i++)
     {
-        diag_rho(i, i) = rho[i];
+        diag_rho(i, i) = rho(i);
     }
     H_d.resize(H_s.rows(), H_s.cols());
     H_d.setZero();
@@ -457,12 +470,13 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
     one_2np.setOnes();
 
     tmp_uf.resize(L.rows(), sc_num);
-    tmp_uf.block(0, 0, 2 * m, 1) = -1.0 * one_2m;
-    tmp_uf.block(2 * m, 1, 2 * m, 1) = -1.0 * one_2m;
+    // tmp_uf.block(0, 0, 2 * m, 1) = -1.0 * one_2m;
+    // tmp_uf.block(2 * m, 1, 2 * m, 1) = -1.0 * one_2m;
     // 将u和du改为硬约束
-    // tmp_uf.block(0, 0, 2 * m, 1).setZero();
-    // tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
-    tmp_uf.block(4 * m, 2, 2 * Np, 1) = -1.0 * one_2np;
+    tmp_uf.block(0, 0, 2 * m, 1).setZero();
+    tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
+    // tmp_uf.block(4 * m, 2, 2 * Np, 1) = -1.0 * one_2np;
+    tmp_uf.block(4 * m, 2, 2 * Np, 1).setZero();
 
     tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
     tmp.block(0, L.cols(), L.rows(), sc_num) = tmp_uf;
@@ -584,10 +598,20 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
         {
             std::cout << solver.workspace()->info->status << std::endl;
             std::cout << solver.workspace()->info->solve_time << std::endl;
+            // U_solve = solver.getSolution();
+            // u_apply = U_solve.block(0, 0, m, 1);
+            // epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
+            // du = u_apply(0) - u_last(0);
+            // u_last = u_apply;
         }
         else
         {
             std::cout << solver.workspace()->info->solve_time << std::endl;
+            U_solve = solver.getSolution();
+            u_apply = U_solve.block(0, 0, m, 1);
+            epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
+            du = u_apply(0) - u_last(0);
+            u_last = u_apply;
         }
         break;
     case OsqpEigen::ErrorExitFlag::DataValidationError:
@@ -619,15 +643,15 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
         return false;
         break;
     }
-    U_solve = solver.getSolution();
-    // std::cout << "U_solve" << std::endl
-    //           << U_solve.size() << std::endl;
-    // if (U_solve.size() >= m * (Np + 3))
-    // {
-    u_apply = U_solve.block(0, 0, m, 1);
-    epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
-    du = u_apply(0) - u_last(0);
-    u_last = u_apply;
+    // U_solve = solver.getSolution();
+    // // std::cout << "U_solve" << std::endl
+    // //           << U_solve.size() << std::endl;
+    // // if (U_solve.size() >= m * (Np + 3))
+    // // {
+    // u_apply = U_solve.block(0, 0, m, 1);
+    // epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
+    // du = u_apply(0) - u_last(0);
+    // u_last = u_apply;
     // }
 
 #ifdef MPC_LOG
@@ -655,9 +679,13 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
         // dU_max + W * u_tmp,
         // dU_max - W * u_tmp,
         dU_max + W * u_last,
-        dU_max - W * u_last,
-        1.5 * one + 0.45 * V_l - E * _A * xk,
-        2.5 * one + 0.75 * V_l + E * _A * xk;
+        3.0 * dU_max - W * u_last,
+        // -0.5-0.3
+        // 1.5 * one + 0.45 * V_l - E * _A * xk,
+        // 2.5 * one + 0.75 * V_l + E * _A * xk;
+        // -0.7-0.9
+        4.5 * one + 1.35 * V_l - E * _A * xk,
+        3.5 * one + 1.05 * V_l + E * _A * xk;
 
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;

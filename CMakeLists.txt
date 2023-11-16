@@ -30,6 +30,7 @@ endif()
 ## is used, also find other catkin packages
 set(CATKIN_DEPENDS
 	roscpp
+	roslib
 	tf
 	std_msgs
 	common_msgs
@@ -42,6 +43,7 @@ COMPONENTS
 	${CATKIN_DEPENDS}
 )
 find_package(Eigen3 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 # find_package(osqp REQUIRED)
 # find_package(OsqpEigen REQUIRED)
 
@@ -206,6 +208,8 @@ target_link_libraries(${PROJECT_NAME}_node
 	${EIGEN3_LIBS}
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib/libosqp.so
+	/usr/lib/x86_64-linux-gnu/libyaml-cpp.so
+
 )
 
 add_executable(score
