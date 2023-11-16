@@ -244,8 +244,8 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
     solver.settings()->setPolish(false);
     solver.settings()->setRho(0.1);
 
-    solver.settings()->setSigma();
-    solver.settings()->setAlpha();
+    solver.settings()->setSigma(1e-06);
+    solver.settings()->setAlpha(1.6);
 
 
 
