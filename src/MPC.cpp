@@ -102,6 +102,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     u_min = mpc_cfg["u_min"].as<double>();
     du_max = mpc_cfg["du_max"].as<double>();
     use_lqr = mpc_cfg["use_lqr"].as<int>();
+    use_a_last = mpc_cfg["use_a_last"].as<int>();
 
     rho.resize(sc_num);
     for (int i = 0; i < sc_num; i++)
@@ -715,18 +716,36 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
     V_l.resize(Np);
     V_l = v * V_l.setOnes();
 
-    UB << U_max,
-        -U_min,
-        // dU_max + W * u_tmp,
-        // dU_max - W * u_tmp,
-        dU_max + W * u_last,
-        dU_max - W * u_last,
-        // -0.5-0.3
-        // 1.5 * one + 0.45 * V_l - E * _A * xk,
-        // 2.5 * one + 0.75 * V_l + E * _A * xk;
-        // -0.7-0.9
-        fc_ub * 5.0 * one + fc_ub * 1.5 * V_l - E * _A * xk,
-        fc_lb * 5.0 * one + fc_lb * 1.5 * V_l + E * _A * xk;
+    if (use_a_last == 1)
+    {
+        UB << U_max,
+            -U_min,
+            dU_max + W * u_tmp,
+            dU_max - W * u_tmp,
+            // dU_max + W * u_last,
+            // dU_max - W * u_last,
+            // -0.5-0.3
+            // 1.5 * one + 0.45 * V_l - E * _A * xk,
+            // 2.5 * one + 0.75 * V_l + E * _A * xk;
+            // -0.7-0.9
+            fc_ub * 5.0 * one + fc_ub * 1.5 * V_l - E * _A * xk,
+            fc_lb * 5.0 * one + fc_lb * 1.5 * V_l + E * _A * xk;
+    }
+    else
+    {
+        UB << U_max,
+            -U_min,
+            // dU_max + W * u_tmp,
+            // dU_max - W * u_tmp,
+            dU_max + W * u_last,
+            dU_max - W * u_last,
+            // -0.5-0.3
+            // 1.5 * one + 0.45 * V_l - E * _A * xk,
+            // 2.5 * one + 0.75 * V_l + E * _A * xk;
+            // -0.7-0.9
+            fc_ub * 5.0 * one + fc_ub * 1.5 * V_l - E * _A * xk,
+            fc_lb * 5.0 * one + fc_lb * 1.5 * V_l + E * _A * xk;
+    }
 
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;

@@ -82,6 +82,7 @@ public:
 class MPC_follow_t : public MPC_t
 {
 public:
+    int use_a_last;
     double du_max = 0.04; // u最大增量
     double u_max = 3;     // u上界约束
     double u_min = -5;    // u下界约束
