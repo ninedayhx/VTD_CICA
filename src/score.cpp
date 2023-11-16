@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "ros/ros.h"
+#include "std_msgs/Float32MultiArray.h"
 
 #include "common_msgs/Control_Test.h"
 #include "common_msgs/CICV_Location.h"
@@ -66,6 +67,7 @@ ros::Subscriber location_sub;
 ros::Subscriber obstacle_sub;
 ros::Subscriber lane_sub;
 ros::Timer score;
+ros::Publisher debug_pub;
 
 void location_callback(const common_msgs::CICV_Location &msg);
 void obstacle_callback(const common_msgs::Perceptionobjects &msg);
@@ -94,6 +96,7 @@ int main(int argc, char **argv)
     obstacle_sub = nh.subscribe("/tpperception", 1000, obstacle_callback);
     lane_sub = nh.subscribe("/LaneDetection", 1000, lane_callback);
     score = nh.createTimer(ros::Duration(car_obs.sample_time), observe_callback);
+    debug_pub = nh.advertise<std_msgs::Float32MultiArray>("/score_debug_log", 1000, false);
 
     start_time = std::chrono::steady_clock::now();
 
@@ -173,6 +176,8 @@ void car_obs_t::sample_data()
 
     static float dddd = 0;
 
+    car_obs.update_state_vec();
+
     frame_sum++;
     if (self.a_x < -5 || self.a_x > 3)
     {
@@ -227,6 +232,17 @@ void car_obs_t::sample_data()
               << " fo_c: " << follow_coef
               << "    d: " << dddd << std::endl;
 #endif
+
+    std_msgs::Float32MultiArray dmsg;
+    dmsg.data.resize(6);
+    dmsg.data[0] = car_obs.x_k(0);
+    dmsg.data[1] = car_obs.x_k(1);
+    dmsg.data[2] = car_obs.x_k(2);
+    dmsg.data[3] = car_obs.self.a_x;
+    dmsg.data[4] = car_obs.leader.a_x;
+    dmsg.data[5] = car_obs.self.j_x;
+
+    debug_pub.publish(dmsg);
 }
 
 void car_obs_t::compute_score()

@@ -25,6 +25,7 @@ using namespace std;
 chrono::_V2::steady_clock::time_point start_time;
 
 float mpc_filter, thr_filter;
+int pub_log;
 YAML::Node cfg;
 
 control_t car_ctrl;
@@ -60,6 +61,7 @@ int main(int argc, char **argv)
     car_ctrl.last_dis = cfg["ctrl"]["last_dis"].as<float>();
     car_ctrl.bias1 = cfg["ctrl"]["bias1"].as<float>();
     car_ctrl.bias2 = cfg["ctrl"]["bias2"].as<float>();
+    pub_log = cfg["ctrl"]["pub_log"].as<int>();
 
     cout << "-----controller param-----" << endl;
     cout << "mpc filter: " << mpc_filter << endl;
@@ -259,23 +261,27 @@ void controller_callback(const ros::TimerEvent &e)
     ctrl_pub.publish(ctrl_msg);
 
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(14);
-    dmsg.data[0] = car_ctrl.x_k(0);
-    dmsg.data[1] = car_ctrl.x_k(1);
-    dmsg.data[2] = car_ctrl.x_k(2);
-    dmsg.data[3] = (float)mpc_lon->u_apply(0);
-    dmsg.data[4] = car_ctrl.self.a_des_f;
-    dmsg.data[5] = car_ctrl.self.u_des;
-    dmsg.data[6] = car_ctrl.self.a_x;
-    dmsg.data[7] = car_ctrl.self.j_x;
-    dmsg.data[8] = car_ctrl.leader.a_x;
-    dmsg.data[9] = car_ctrl.self.a_x;
-    dmsg.data[10] = mpc_lon->du;
-    dmsg.data[11] = mpc_lon->epsilon[0];
-    dmsg.data[12] = mpc_lon->epsilon[1];
-    dmsg.data[13] = mpc_lon->epsilon[2];
 
-    debug_pub.publish(dmsg);
+    if(pub_log ==1)
+    {
+        dmsg.data.resize(14);
+        dmsg.data[0] = car_ctrl.x_k(0);
+        dmsg.data[1] = car_ctrl.x_k(1);
+        dmsg.data[2] = car_ctrl.x_k(2);
+        dmsg.data[3] = (float)mpc_lon->u_apply(0);
+        dmsg.data[4] = car_ctrl.self.a_des_f;
+        dmsg.data[5] = car_ctrl.self.u_des;
+        dmsg.data[6] = car_ctrl.self.a_x;
+        dmsg.data[7] = car_ctrl.self.j_x;
+        dmsg.data[8] = car_ctrl.leader.a_x;
+        dmsg.data[9] = car_ctrl.self.a_x;
+        dmsg.data[10] = mpc_lon->du;
+        dmsg.data[11] = mpc_lon->epsilon[0];
+        dmsg.data[12] = mpc_lon->epsilon[1];
+        dmsg.data[13] = mpc_lon->epsilon[2];
+
+        debug_pub.publish(dmsg);
+    }
 }
 
 YAML::Node load_params(string path)

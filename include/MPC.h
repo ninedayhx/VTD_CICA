@@ -30,6 +30,7 @@ class MPC_t
 {
 public:
     int use_lqr = 1;
+    int is_log;
 
     int Np;                               // 预测或控制时域 Np = Nc
     int Nc;                               // unuse

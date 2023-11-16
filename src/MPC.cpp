@@ -103,6 +103,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     du_max = mpc_cfg["du_max"].as<double>();
     use_lqr = mpc_cfg["use_lqr"].as<int>();
     use_a_last = mpc_cfg["use_a_last"].as<int>();
+    is_log = mpc_cfg["is_log"].as<int>();
 
     rho.resize(sc_num);
     for (int i = 0; i < sc_num; i++)
@@ -633,8 +634,11 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, EMXd lqr_k, bool is_soft)
         // std::cout << solver.workspace()->info->solve_time << std::endl;
         if (strcmp(solver.workspace()->info->status, "solved"))
         {
-            std::cout << solver.workspace()->info->status << std::endl;
-            std::cout << solver.workspace()->info->solve_time << std::endl;
+            if (is_log == 1)
+            {
+                std::cout << solver.workspace()->info->status << std::endl;
+                std::cout << solver.workspace()->info->solve_time << std::endl;
+            }
             // U_solve = solver.getSolution();
             // u_apply = U_solve.block(0, 0, m, 1);
             // epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
@@ -648,7 +652,10 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, EMXd lqr_k, bool is_soft)
         }
         else
         {
-            std::cout << solver.workspace()->info->solve_time << std::endl;
+            if (is_log == 1)
+            {
+                std::cout << solver.workspace()->info->solve_time << std::endl;
+            }
             U_solve = solver.getSolution();
             u_apply = U_solve.block(0, 0, m, 1);
             epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
