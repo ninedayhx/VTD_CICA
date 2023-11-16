@@ -25,7 +25,7 @@ using namespace std;
 chrono::_V2::steady_clock::time_point start_time;
 
 float mpc_filter, thr_filter;
-YAML::Node mpc_cfg;
+YAML::Node cfg;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
@@ -51,29 +51,22 @@ YAML::Node load_params(string path);
 int main(int argc, char **argv)
 {
     // yaml 需要使用空格缩进
-    string cfg_path = ros::package::getPath("test_ctrl") + "/cfg/mpccfg.yaml";
-    mpc_cfg = load_params(cfg_path);
-    YAML::Node osqp_cfg = mpc_cfg["osqp"];
-    cout << osqp_cfg << endl;
+    string cfg_path = ros::package::getPath("test_ctrl") + "/cfg/cfg.yaml";
+    cfg = load_params(cfg_path);
+    YAML::Node osqp_cfg = cfg["osqp"];
 
-    cout << argc << endl;
-    if (argc == 5)
-    {
-        mpc_filter = atof(argv[2]);
-        thr_filter = atof(argv[3]);
-        car_ctrl.last_dis = atof(argv[4]);
-        cout << "param set" << endl;
-    }
-    else
-    {
-        cout << "using default param" << endl;
-        mpc_filter = 1;
-        thr_filter = 1;
-        car_ctrl.last_dis = 25;
-    }
+    mpc_filter = cfg["ctrl"]["mpc_filter"].as<float>();
+    thr_filter = cfg["ctrl"]["thr_filter"].as<float>();
+    car_ctrl.last_dis = cfg["ctrl"]["last_dis"].as<float>();
+    car_ctrl.bias1 = cfg["ctrl"]["bias1"].as<float>();
+    car_ctrl.bias2 = cfg["ctrl"]["bias2"].as<float>();
+
+    cout << "-----controller param-----" << endl;
     cout << "mpc filter: " << mpc_filter << endl;
     cout << "thr filter: " << thr_filter << endl;
     cout << "  last_dis: " << car_ctrl.last_dis << endl;
+    cout << "     bias1: " << car_ctrl.bias1 << endl;
+    cout << "     bias2: " << car_ctrl.bias2 << endl;
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 
@@ -107,14 +100,14 @@ int main(int argc, char **argv)
              0,100,0,
              0,0,100;
     R_mpc << 5;
-    const vector<double> QVec = mpc_cfg["mpc"]["Q"].as<vector<double>>();
+    const vector<double> QVec = cfg["mpc"]["Q"].as<vector<double>>();
     Q_mpc(0,0) = QVec[0];
     Q_mpc(1,1) = QVec[4];
     Q_mpc(2,2) = QVec[8];
-    R_mpc(0,0) = mpc_cfg["mpc"]["R"].as<double>();
+    R_mpc(0,0) = cfg["mpc"]["R"].as<double>();
     Eigen::VectorXd Rho;
     Rho.resize(3);
-    const vector<double> rhoVec = mpc_cfg["mpc"]["rho"].as<vector<double>>();
+    const vector<double> rhoVec = cfg["mpc"]["rho"].as<vector<double>>();
     for(int i=0; i<3; i++)
     {
         Rho(i) = rhoVec[i];
@@ -127,7 +120,7 @@ int main(int argc, char **argv)
                                Q_mpc,
                                R_mpc,
                                Rho,
-                               mpc_cfg["mpc"]["Np"].as<int>(), 
+                               cfg["mpc"]["Np"].as<int>(), 
                                2, 
                                3,
                                osqp_cfg);

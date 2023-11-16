@@ -134,7 +134,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     std::cout << " MPC n: " << n << " m: " << m << " Np: " << Np << std::endl;
     std::cout << " Q: " << Q << std::endl;
     std::cout << " R: " << R << std::endl;
-    std::cout << " Rho: " << _rho << std::endl;
+    std::cout << " Rho: " << _rho.transpose() << std::endl;
 
     _H.resize(m * Np, m * Np);
     grad.resize(m * Np);
