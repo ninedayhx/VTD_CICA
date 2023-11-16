@@ -6,7 +6,10 @@ mpc:
       0.0, 0.0, 500.0  ]
   R: 0.1
   Np: 80
-  rho: [0, 0, 0]
+  rho: [1, 1, 1]
+  fc_lb: 0.6
+  fc_ub: 0.4
+  soft_flag: [1, 1, 1]
 osqp: 
   default: 0
   solver: 0
@@ -31,8 +34,8 @@ osqp:
   timelim: 0.005
   priter: 3
 ctrl:
-  bias1: 2.0
-  bias2: 2.0
+  bias1: -3.0
+  bias2: 0.0
   mpc_filter: 1.0
   thr_filter: 1.0
   last_dis: 20.0

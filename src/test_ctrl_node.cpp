@@ -123,7 +123,7 @@ int main(int argc, char **argv)
                                cfg["mpc"]["Np"].as<int>(), 
                                2, 
                                3,
-                               osqp_cfg);
+                               cfg);
 
     // Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
     // Q_sp << 0, 0, 0,

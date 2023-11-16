@@ -90,6 +90,21 @@
 MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, int constraint_type, int sc_num, YAML::Node cfg)
 {
     Np = Np_;
+    YAML::Node osqp_cfg, mpc_cfg;
+    std::vector<int> soft_flag;
+    mpc_cfg = cfg["mpc"];
+    osqp_cfg = cfg["osqp"];
+
+    fc_lb = mpc_cfg["fc_lb"].as<double>();
+    fc_ub = mpc_cfg["fc_ub"].as<double>();
+    soft_flag = mpc_cfg["soft_flag"].as<std::vector<int>>();
+
+    rho.resize(sc_num);
+    for (int i = 0; i < sc_num; i++)
+    {
+        rho(i) = _rho(i) * (double)soft_flag[i];
+    }
+    epsilon.resize(3);
 
     if (A.rows() != A.cols())
     {
@@ -131,10 +146,12 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
         return;
     }
 
+    std::cout << "-----MPC param------" << std::endl;
     std::cout << " MPC n: " << n << " m: " << m << " Np: " << Np << std::endl;
-    std::cout << " Q: " << Q << std::endl;
+    std::cout << " Q: " << std::endl
+              << Q << std::endl;
     std::cout << " R: " << R << std::endl;
-    std::cout << " Rho: " << _rho.transpose() << std::endl;
+    std::cout << " Rho: " << rho.transpose() << std::endl;
 
     _H.resize(m * Np, m * Np);
     grad.resize(m * Np);
@@ -184,10 +201,6 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     u_apply.resize(m);
     U_solve.resize(m * Np);
 
-    rho.resize(sc_num);
-    rho = _rho;
-    epsilon.resize(3);
-
     H_s.resize(_H.rows() + sc_num, _H.cols() + sc_num);
     grad_s.resize(grad.rows() + sc_num);
     L_s.resize(L.rows() + sc_num, L.cols() + sc_num);
@@ -204,12 +217,10 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     }
     else if (constraint_type == 2)
     {
-
+        compute_Linear_mat_with_slack(sc_num, soft_flag[0], soft_flag[1], soft_flag[2]);
         compute_Hessian_with_slack(sc_num);
         LB_s = -OsqpEigen::INFTY * LB_s.setOnes();
-        compute_Linear_mat_with_slack(sc_num);
-
-        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, cfg, false))
+        if (!solver_init(H_s, grad_s, LB_s, UB_s, L_s, osqp_cfg, false))
         {
             std::cout << "osqp solver init false" << std::endl;
         }
@@ -456,7 +467,7 @@ void MPC_t::compute_gradient(EMXd x_k)
     grad_s.block(0, 0, grad.rows(), grad.cols()) = grad;
 }
 
-void MPC_t::compute_Linear_mat_with_slack(int sc_num)
+void MPC_t::compute_Linear_mat_with_slack(int sc_num, int is_u_sf, int is_du_sf, int is_fc_sf)
 {
     EMXd tmp, ident, tmp_uf;
     tmp.resize(L.rows() + sc_num, L.cols() + sc_num);
@@ -470,13 +481,33 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
     one_2np.setOnes();
 
     tmp_uf.resize(L.rows(), sc_num);
-    // tmp_uf.block(0, 0, 2 * m, 1) = -1.0 * one_2m;
-    // tmp_uf.block(2 * m, 1, 2 * m, 1) = -1.0 * one_2m;
-    // 将u和du改为硬约束
-    tmp_uf.block(0, 0, 2 * m, 1).setZero();
-    tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
-    // tmp_uf.block(4 * m, 2, 2 * Np, 1) = -1.0 * one_2np;
-    tmp_uf.block(4 * m, 2, 2 * Np, 1).setZero();
+
+    if (is_u_sf == 1)
+    {
+        tmp_uf.block(0, 0, 2 * m, 1) = -1.0 * one_2m;
+    }
+    else
+    {
+        tmp_uf.block(0, 0, 2 * m, 1).setZero();
+    }
+
+    if (is_du_sf == 1)
+    {
+        tmp_uf.block(2 * m, 1, 2 * m, 1) = -1.0 * one_2m;
+    }
+    else
+    {
+        tmp_uf.block(2 * m, 1, 2 * m, 1).setZero();
+    }
+
+    if (is_fc_sf == 1)
+    {
+        tmp_uf.block(4 * m, 2, 2 * Np, 1) = -1.0 * one_2np;
+    }
+    else
+    {
+        tmp_uf.block(4 * m, 2, 2 * Np, 1).setZero();
+    }
 
     tmp.block(0, 0, L.rows(), L.cols()) = L.toDense();
     tmp.block(0, L.cols(), L.rows(), sc_num) = tmp_uf;
@@ -684,8 +715,8 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
         // 1.5 * one + 0.45 * V_l - E * _A * xk,
         // 2.5 * one + 0.75 * V_l + E * _A * xk;
         // -0.7-0.9
-        4.5 * one + 1.35 * V_l - E * _A * xk,
-        3.5 * one + 1.05 * V_l + E * _A * xk;
+        fc_ub * 5.0 * one + fc_ub * 1.5 * V_l - E * _A * xk,
+        fc_lb * 5.0 * one + fc_lb * 1.5 * V_l + E * _A * xk;
 
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;

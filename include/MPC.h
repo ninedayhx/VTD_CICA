@@ -70,7 +70,7 @@ public:
     void compute_Hessian();
     void compute_Hessian_with_slack(int sc_num);
     void compute_gradient(EMXd x_k);
-    void compute_Linear_mat_with_slack(int sc_num);
+    void compute_Linear_mat_with_slack(int sc_num, int is_u_sf, int is_du_sf, int is_fc_sf);
     bool solve_MPC_QP_no_constraints(EMXd x_k);
     bool solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft);
 
@@ -83,6 +83,7 @@ public:
     const double du_max = 0.04; // u最大增量
     const double u_max = 3;     // u上界约束
     const double u_min = -5;    // u下界约束
+    double fc_lb, fc_ub;
     EVXd U_max, U_min, dU_max, V_l;
 
     EMXd W, E;
