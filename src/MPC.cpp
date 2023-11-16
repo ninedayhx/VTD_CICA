@@ -82,9 +82,10 @@
  * @param Q
  * @param R
  * @param Np_
- * @param constraint_type   1 for hard constraint
+ * @param constraint_type   0 for no constraint
+ *                          1 for hard constraint
  *                          2 for soft constraint
- * @param sc_num soft constraint num
+ * @param sc_num            slack var num
  */
 MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num)
 {
@@ -234,15 +235,34 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
 
 bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
 {
-    solver.settings()->setWarmStart(true);
+    // clang-format off
+
+    solver.settings()->setLinearSystemSolver(QDLDL_SOLVER);
     solver.settings()->setVerbosity(is_log);
-    solver.settings()->setMaxIteration(20000);
+    solver.settings()->setWarmStart(false);
+    solver.settings()->setScaling(10);
+    solver.settings()->setPolish(false);
+    solver.settings()->setRho(0.1);
+
+    solver.settings()->setSigma();
+    solver.settings()->setAlpha();
+
+
+
+    solver.settings()->setAdaptiveRho(true);
+    solver.settings()->setAdaptiveRhoInterval(0);
+    solver.settings()->setAdaptiveRhoFraction(0.4);
+    solver.settings()->setAdaptiveRhoTolerance(5);
+    solver.settings()->setMaxIteration(4000);
+    solver.settings()->setAbsoluteTolerance(0.001);
+    solver.settings()->setRelativeTolerance(0.001);
+    solver.settings()->setPrimalInfeasibilityTolerance(0.0001);
+    solver.settings()->setDualInfeasibilityTolerance(0.0001);
+    solver.settings()->setScaledTerimination(false);
+    solver.settings()->setCheckTermination(25);
     solver.settings()->setTimeLimit(0.005);
-    // solver.settings()->setAbsoluteTolerance(1);
-    // solver.settings()->setRelativeTolerance(1);
-    // solver.settings()->setPrimalInfeasibilityTolerance(0.1);
-    // solver.settings()->setDualInfeasibilityTolerance(0.1);
-    // solver.settings()->setDelta(0.1);
+    solver.settings()->setPolishRefineIter(3);
+    // clang-format on
 
     if (solver.data()->isSet())
     {
