@@ -175,6 +175,8 @@ class control_t
 public:
     const float search_dis = 40;
     float last_dis = 25;
+    float bias1 = 0;
+    float bias2 = 0;
 
     car_self self;
     leader_t leader;

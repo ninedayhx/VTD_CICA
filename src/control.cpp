@@ -768,7 +768,7 @@ void control_t::update_state_vec()
     if ((self.p_x <= 460) && car_cur.size() >= 2)
     {
 
-        self.L_des = self.L_des - 0;
+        self.L_des = self.L_des - 5;
         // std::cout << "cur_num" << car_cur.size() << std::endl;
 
         // std::cout << "cur_dis1:" << pow(pow(car_cur[0].x, 2) + pow(car_cur[0].y, 2), 0.5) << std::endl;
@@ -777,6 +777,11 @@ void control_t::update_state_vec()
     else
     {
         // std::cout << "cur_num" << car_cur.size() << std::endl;
+    }
+
+    if (self.p_y <= -10 && self.phi > M_PI * 5 / 4 && self.phi < M_PI * 7 / 4)
+    {
+        self.L_des = self.L_des + 2;
     }
 
     x_k(0) = leader.line_len - self.L_des;
