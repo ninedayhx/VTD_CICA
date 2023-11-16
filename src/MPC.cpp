@@ -98,6 +98,10 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
     fc_lb = mpc_cfg["fc_lb"].as<double>();
     fc_ub = mpc_cfg["fc_ub"].as<double>();
     soft_flag = mpc_cfg["soft_flag"].as<std::vector<int>>();
+    u_max = mpc_cfg["u_max"].as<double>();
+    u_min = mpc_cfg["u_min"].as<double>();
+    du_max = mpc_cfg["du_max"].as<double>();
+    use_lqr = mpc_cfg["use_lqr"].as<int>();
 
     rho.resize(sc_num);
     for (int i = 0; i < sc_num; i++)
@@ -152,6 +156,7 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, i
               << Q << std::endl;
     std::cout << " R: " << R << std::endl;
     std::cout << " Rho: " << rho.transpose() << std::endl;
+    std::cout << " u_max: " << u_max << " u_min: " << u_min << " du_max: " << du_max << std::endl;
 
     _H.resize(m * Np, m * Np);
     grad.resize(m * Np);
@@ -590,7 +595,7 @@ bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
  * @return true
  * @return false
  */
-bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
+bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, EMXd lqr_k, bool is_soft)
 {
     compute_gradient(x_k);
     if (!is_soft)
@@ -634,6 +639,11 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
             // epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
             // du = u_apply(0) - u_last(0);
             // u_last = u_apply;
+            if (use_lqr)
+            {
+                u_apply(0) = -(lqr_k(0, 0) * x_k(0) + lqr_k(0, 1) * x_k(1) + lqr_k(0, 2) * x_k(2));
+                u_last = u_apply;
+            }
         }
         else
         {
@@ -710,7 +720,7 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
         // dU_max + W * u_tmp,
         // dU_max - W * u_tmp,
         dU_max + W * u_last,
-        3.0 * dU_max - W * u_last,
+        dU_max - W * u_last,
         // -0.5-0.3
         // 1.5 * one + 0.45 * V_l - E * _A * xk,
         // 2.5 * one + 0.75 * V_l + E * _A * xk;

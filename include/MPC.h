@@ -29,6 +29,8 @@ using EVXd = Eigen::VectorXd;
 class MPC_t
 {
 public:
+    int use_lqr = 1;
+
     int Np;                               // 预测或控制时域 Np = Nc
     int Nc;                               // unuse
     int n;                                // 状态变量维度
@@ -72,7 +74,7 @@ public:
     void compute_gradient(EMXd x_k);
     void compute_Linear_mat_with_slack(int sc_num, int is_u_sf, int is_du_sf, int is_fc_sf);
     bool solve_MPC_QP_no_constraints(EMXd x_k);
-    bool solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft);
+    bool solve_MPC_QP_with_constraints(EMXd x_k, EMXd lqr_k, bool is_soft);
 
     // MPC_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_);
 };
@@ -80,9 +82,9 @@ public:
 class MPC_follow_t : public MPC_t
 {
 public:
-    const double du_max = 0.04; // u最大增量
-    const double u_max = 3;     // u上界约束
-    const double u_min = -5;    // u下界约束
+    double du_max = 0.04; // u最大增量
+    double u_max = 3;     // u上界约束
+    double u_min = -5;    // u下界约束
     double fc_lb, fc_ub;
     EVXd U_max, U_min, dU_max, V_l;
 

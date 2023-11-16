@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     start_time = std::chrono::steady_clock::now();
 
     // LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
-    // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
+    LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
     // LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
 
     // ros::Rate loop_rate(100);
@@ -210,7 +210,7 @@ void controller_callback(const ros::TimerEvent &e)
         car_ctrl.update_state_vec();
         mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.leader.v_x, true, (double)car_ctrl.self.a_x);
 
-        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
+        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), LQR_longtitute.K.cast<double>(), true))
         {
             cout << "mpc solve fault" << endl;
         }
