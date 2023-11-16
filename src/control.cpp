@@ -758,12 +758,12 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
 
 void control_t::update_state_vec()
 {
-    self.L_des = 5 + 1.5 * self.v_x;
+    self.L_des = 5 + 1.5 * leader.v_x;
 
     if ((self.p_x <= 460) && car_cur.size() >= 2)
     {
 
-        self.L_des -= 6;
+        self.L_des = self.L_des - 6.5;
         // std::cout << "cur_num" << car_cur.size() << std::endl;
 
         // std::cout << "cur_dis1:" << pow(pow(car_cur[0].x, 2) + pow(car_cur[0].y, 2), 0.5) << std::endl;

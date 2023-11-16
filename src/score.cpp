@@ -172,7 +172,7 @@ void car_obs_t::sample_data()
     // static int dis_tmp = 0;
 
     static float dddd = 0;
-    float dis_des = 5 + 1.5 * self.v_x;
+
     frame_sum++;
     if (self.a_x < -5 || self.a_x > 3)
     {
@@ -193,6 +193,7 @@ void car_obs_t::sample_data()
 
     if (self.start_follow)
     {
+        float dis_des = 5 + 1.5 * leader.v_x;
         follow_coef = (leader.line_len - dis_des) / dis_des;
 
         if (self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
