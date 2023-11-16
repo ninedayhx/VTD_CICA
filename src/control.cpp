@@ -360,17 +360,22 @@ void control_t::leader_update()
         int oth_itr = is_lane_changing(car_oth);
         int itr = find_the_latest(car_cur);
 
+        if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
+        {
+            // std::cout << "car_oth" << std::endl;
+            self.start_follow = 1;
+            leader.update(car_oth[oth_itr], lane, self);
+        }
+        else
+        {
+            // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
+            self.start_follow = 0;
+        }
         if (itr >= 0)
         {
             // std::cout << "car_cur" << std::endl;
             self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
-        }
-        else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
-        {
-            // std::cout << "car_oth" << std::endl;
-            self.start_follow = 1;
-            leader.update(car_oth[oth_itr], lane, self);
         }
         else
         {
