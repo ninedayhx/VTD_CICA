@@ -260,7 +260,7 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
     solver.settings()->setDualInfeasibilityTolerance(0.0001);
     solver.settings()->setScaledTerimination(false);
     solver.settings()->setCheckTermination(25);
-    solver.settings()->setTimeLimit(0.005);
+    solver.settings()->setTimeLimit(1e+10);
     solver.settings()->setPolishRefineIter(3);
     // clang-format on
 
