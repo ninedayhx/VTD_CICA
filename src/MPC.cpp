@@ -253,7 +253,7 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
     solver.settings()->setAdaptiveRhoInterval(0);
     solver.settings()->setAdaptiveRhoFraction(0.4);
     solver.settings()->setAdaptiveRhoTolerance(5);
-    solver.settings()->setMaxIteration(4000);
+    solver.settings()->setMaxIteration(100000);
     solver.settings()->setAbsoluteTolerance(0.001);
     solver.settings()->setRelativeTolerance(0.001);
     solver.settings()->setPrimalInfeasibilityTolerance(0.0001);
@@ -285,15 +285,34 @@ bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
 
 bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log)
 {
-    solver.settings()->setWarmStart(true);
+    // clang-format off
+
+    solver.settings()->setLinearSystemSolver(QDLDL_SOLVER);
     solver.settings()->setVerbosity(is_log);
-    solver.settings()->setMaxIteration(20000);
-    solver.settings()->setTimeLimit(0.005);
-    // solver.settings()->setAbsoluteTolerance(1);
-    // solver.settings()->setRelativeTolerance(1);
-    // solver.settings()->setPrimalInfeasibilityTolerance(0.1);
-    // solver.settings()->setDualInfeasibilityTolerance(0.1);
-    // solver.settings()->setDelta(0.1);
+    solver.settings()->setWarmStart(false);
+    solver.settings()->setScaling(10);
+    solver.settings()->setPolish(false);
+    solver.settings()->setRho(0.1);
+
+    solver.settings()->setSigma(1e-06);
+    solver.settings()->setAlpha(1.6);
+
+
+
+    solver.settings()->setAdaptiveRho(true);
+    solver.settings()->setAdaptiveRhoInterval(0);
+    solver.settings()->setAdaptiveRhoFraction(0.4);
+    solver.settings()->setAdaptiveRhoTolerance(5);
+    solver.settings()->setMaxIteration(4000);
+    solver.settings()->setAbsoluteTolerance(0.001);
+    solver.settings()->setRelativeTolerance(0.001);
+    solver.settings()->setPrimalInfeasibilityTolerance(0.0001);
+    solver.settings()->setDualInfeasibilityTolerance(0.0001);
+    solver.settings()->setScaledTerimination(false);
+    solver.settings()->setCheckTermination(25);
+    solver.settings()->setTimeLimit(1e+10);
+    solver.settings()->setPolishRefineIter(3);
+    // clang-format on
 
     if (solver.data()->isSet())
     {

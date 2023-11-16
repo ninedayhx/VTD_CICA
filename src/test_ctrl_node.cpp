@@ -106,20 +106,20 @@ int main(int argc, char **argv)
                                R_mpc,
                                80, 2, 3);
 
-    Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
-    Q_sp << 0, 0, 0,
-            0, 1000, 0,
-            0, 0, 0;
-    R_sp << 500;
-    // A_test = 2*A_test.setIdentity(3,3);
-    // B_test.setOnes();
-    // clang-format on
+    // Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
+    // Q_sp << 0, 0, 0,
+    //         0, 1000, 0,
+    //         0, 0, 0;
+    // R_sp << 500;
+    // // A_test = 2*A_test.setIdentity(3,3);
+    // // B_test.setOnes();
+    // // clang-format on
 
-    mpc_sp = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
-                              car_ctrl.follow_leader_mod.B.cast<double>(),
-                              Q_sp,
-                              R_sp,
-                              40, 0, 0);
+    // mpc_sp = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
+    //                           car_ctrl.follow_leader_mod.B.cast<double>(),
+    //                           Q_sp,
+    //                           R_sp,
+    //                           40, 0, 0);
 
     ros::init(argc, argv, "test_ctrl_node");
     ros::NodeHandle nh;
@@ -252,9 +252,9 @@ void controller_callback(const ros::TimerEvent &e)
     dmsg.data[8] = car_ctrl.leader.a_x;
     dmsg.data[9] = car_ctrl.self.a_x;
     dmsg.data[10] = mpc_lon->du;
-    dmsg.data[11] = kmphTomps(car_ctrl.lon_v_des);
-    dmsg.data[12] = car_ctrl.self.v_x;
-    dmsg.data[13] = car_ctrl.lon_a_des;
+    dmsg.data[11] = mpc_lon->epsilon[0];
+    dmsg.data[12] = mpc_lon->epsilon[1];
+    dmsg.data[13] = mpc_lon->epsilon[2];
 
     debug_pub.publish(dmsg);
 }
