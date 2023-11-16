@@ -188,7 +188,11 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     LB_s.resize(LB.rows() + sc_num);
     UB_s.resize(UB.rows() + sc_num);
 
-    if (constraint_type == 1)
+    if (constraint_type == 0)
+    {
+        solver_init(_H, grad, false);
+    }
+    else if (constraint_type == 1)
     {
         solver_init(_H, grad, LB, UB, L, false);
     }
@@ -228,17 +232,48 @@ MPC_follow_t::MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constrai
     // init
 }
 
+bool MPC_t::solver_init(ESMd h, EVXd grad_, bool is_log)
+{
+    solver.settings()->setWarmStart(true);
+    solver.settings()->setVerbosity(is_log);
+    solver.settings()->setMaxIteration(20000);
+    solver.settings()->setTimeLimit(0.005);
+    // solver.settings()->setAbsoluteTolerance(1);
+    // solver.settings()->setRelativeTolerance(1);
+    // solver.settings()->setPrimalInfeasibilityTolerance(0.1);
+    // solver.settings()->setDualInfeasibilityTolerance(0.1);
+    // solver.settings()->setDelta(0.1);
+
+    if (solver.data()->isSet())
+    {
+        solver.data()->clearHessianMatrix();
+        solver.data()->clearLinearConstraintsMatrix();
+    }
+
+    solver.data()->setNumberOfVariables(h.cols());
+    solver.data()->setNumberOfConstraints(0);
+    if (!solver.data()->setHessianMatrix(h))
+        return false;
+    if (!solver.data()->setGradient(grad_))
+        return false;
+
+    if (!solver.initSolver())
+        return false;
+
+    return true;
+}
+
 bool MPC_t::solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log)
 {
     solver.settings()->setWarmStart(true);
     solver.settings()->setVerbosity(is_log);
-    // solver.settings()->setMaxIteration(10000);
+    solver.settings()->setMaxIteration(20000);
     solver.settings()->setTimeLimit(0.005);
-    solver.settings()->setAbsoluteTolerance(0.1);
-    solver.settings()->setRelativeTolerance(0.1);
-    solver.settings()->setPrimalInfeasibilityTolerance(0.01);
-    solver.settings()->setDualInfeasibilityTolerance(0.01);
-    solver.settings()->setDelta(0.001);
+    // solver.settings()->setAbsoluteTolerance(1);
+    // solver.settings()->setRelativeTolerance(1);
+    // solver.settings()->setPrimalInfeasibilityTolerance(0.1);
+    // solver.settings()->setDualInfeasibilityTolerance(0.1);
+    // solver.settings()->setDelta(0.1);
 
     if (solver.data()->isSet())
     {
@@ -399,7 +434,69 @@ void MPC_t::compute_Linear_mat_with_slack(int sc_num)
 
 bool MPC_t::solve_MPC_QP_no_constraints(EMXd x_k)
 {
-    return false;
+    compute_gradient(x_k);
+
+    if (!solver.updateGradient(grad))
+    {
+        std::cout << "update grad err" << std::endl;
+        return false;
+    }
+
+    OsqpEigen::ErrorExitFlag err_flag = solver.solveProblem();
+    switch (err_flag)
+    {
+    case OsqpEigen::ErrorExitFlag::NoError:
+        // std::cout << solver.workspace()->info->solve_time << std::endl;
+        if (strcmp(solver.workspace()->info->status, "solved"))
+        {
+            std::cout << solver.workspace()->info->status << std::endl;
+            std::cout << solver.workspace()->info->solve_time << std::endl;
+        }
+        else
+        {
+            std::cout << solver.workspace()->info->solve_time << std::endl;
+        }
+        break;
+    case OsqpEigen::ErrorExitFlag::DataValidationError:
+        std::cout << "DataValidationError" << std::endl;
+        return false;
+        break;
+    case OsqpEigen::ErrorExitFlag::LinsysSolverInitError:
+        std::cout << "LinsysSolverInitError" << std::endl;
+        return false;
+        break;
+    case OsqpEigen::ErrorExitFlag::LinsysSolverLoadError:
+        std::cout << "LinsysSolverLoadError" << std::endl;
+        return false;
+        break;
+    case OsqpEigen::ErrorExitFlag::NonCvxError:
+        std::cout << "NonCvxError" << std::endl;
+        return false;
+        break;
+    case OsqpEigen::ErrorExitFlag::SettingsValidationError:
+        std::cout << "SettingsValidationError" << std::endl;
+        return false;
+        break;
+    case OsqpEigen::ErrorExitFlag::WorkspaceNotInitError:
+        std::cout << "WorkspaceNotInitError" << std::endl;
+        return false;
+        break;
+    default:
+        std::cout << "unknown err" << std::endl;
+        return false;
+        break;
+    }
+    U_solve = solver.getSolution();
+    // std::cout << "U_solve" << std::endl
+    //           << U_solve.size() << std::endl;
+    // if (U_solve.size() >= m * (Np + 3))
+    // {
+    u_apply = U_solve.block(0, 0, m, 1);
+    epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
+    du = u_apply(0) - u_last(0);
+    u_last = u_apply;
+    // }
+    return true;
 }
 
 /**
@@ -483,12 +580,16 @@ bool MPC_t::solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft)
         return false;
         break;
     }
-
     U_solve = solver.getSolution();
+    // std::cout << "U_solve" << std::endl
+    //           << U_solve.size() << std::endl;
+    // if (U_solve.size() >= m * (Np + 3))
+    // {
     u_apply = U_solve.block(0, 0, m, 1);
     epsilon = U_solve.block(U_solve.rows() - 3, 0, 3, 1);
     du = u_apply(0) - u_last(0);
     u_last = u_apply;
+    // }
 
 #ifdef MPC_LOG
     std::cout << "U_solve" << std::endl
@@ -507,8 +608,8 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
     u_tmp.resize(m);
     u_tmp(0) = a_last;
     one = one.setOnes();
-    V_self.resize(Np);
-    V_self = v * V_self.setOnes();
+    V_l.resize(Np);
+    V_l = v * V_l.setOnes();
 
     UB << U_max,
         -U_min,
@@ -516,8 +617,8 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
         // dU_max - W * u_tmp,
         dU_max + W * u_last,
         dU_max - W * u_last,
-        1.5 * one + 0.45 * V_self - E * _A * xk,
-        2.5 * one + 0.75 * V_self + E * _A * xk;
+        1.5 * one + 0.45 * V_l - E * _A * xk,
+        2.5 * one + 0.75 * V_l + E * _A * xk;
 
     UB_s.setZero();
     UB_s.block(0, 0, UB.rows(), UB.cols()) = UB;
@@ -527,7 +628,7 @@ void MPC_follow_t::compute_inequality_constraints(EVXd xk, double v, bool is_sof
     //     << U_max(0) << std::endl
     //     << -U_min(0) << std::endl
     //     << (dU_max + W * u_last)(0) << std::endl
-    //     << (1.5 * one + 0.45 * V_self - E * _A * xk)(0) << std::endl;
+    //     << (1.5 * one + 0.45 * V_l - E * _A * xk)(0) << std::endl;
 #ifdef MPC_LOG
     std::cout
         << "U_max:" << std::endl

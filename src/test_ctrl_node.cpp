@@ -28,7 +28,7 @@ control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
 Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
 Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
-MPC_follow_t *mpc_lon;
+MPC_follow_t *mpc_lon, *mpc_sp;
 
 common_msgs::Control_Test ctrl_msg;
 ros::Subscriber location_sub;
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
     Q_lon << 60, 0,  0,
              0,  10, 0,
              0,  0,  1000;
-    R_lon << 100;
+    R_lon << 50;
     LQR_longtitute.get_param(Q_lon, R_lon, 0.01);
 
     Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
@@ -99,13 +99,27 @@ int main(int argc, char **argv)
     R_mpc << 5;
     // A_test = 2*A_test.setIdentity(3,3);
     // B_test.setOnes();
-    // clang-format on
 
     mpc_lon = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
                                80, 2, 3);
+
+    Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
+    Q_sp << 0, 0, 0,
+            0, 1000, 0,
+            0, 0, 0;
+    R_sp << 500;
+    // A_test = 2*A_test.setIdentity(3,3);
+    // B_test.setOnes();
+    // clang-format on
+
+    mpc_sp = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
+                              car_ctrl.follow_leader_mod.B.cast<double>(),
+                              Q_sp,
+                              R_sp,
+                              40, 0, 0);
 
     ros::init(argc, argv, "test_ctrl_node");
     ros::NodeHandle nh;
@@ -153,6 +167,8 @@ void controller_callback(const ros::TimerEvent &e)
 {
     static float a_tmp = 0;
 
+    LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
+
     // static int cnt = 0;
     // cnt++;
     // if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.02 && abs(car_ctrl.lane.lane_phi) <= 0.002)
@@ -169,19 +185,20 @@ void controller_callback(const ros::TimerEvent &e)
     LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // cout << "k" << LQR_lateral.K << endl;
 
+    // if (1 == -1)
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
-        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true, (double)car_ctrl.self.a_x);
+        // mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.leader.v_x, true, (double)car_ctrl.self.a_x);
 
-        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
-        {
-            cout << "mpc solve fault" << endl;
-        }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter, thr_filter);
+        // if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
+        // {
+        //     cout << "mpc solve fault" << endl;
+        // }
+        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter, thr_filter);
 
         // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), mpc_filter, thr_filter);
 
         // cout << "following...  self lane: " << car_ctrl.lane.lane_locate << " leader lane: " << car_ctrl.leader.lane << endl;
     }
@@ -200,9 +217,20 @@ void controller_callback(const ros::TimerEvent &e)
         //     // cout << "test" << endl;
         //     car_ctrl.lon_v_des = 30;
         // }
-        car_ctrl.lon_v_des = 30;
-        ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+        // car_ctrl.lon_v_des = 30;
+        // ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
         // cout << "no leader, self speed... lane = " << endl;
+
+        // car_ctrl.update_state_vec();
+        car_ctrl.x_k(0) = 0;
+        car_ctrl.x_k(1) = 30 / 3.6 - car_ctrl.self.v_x;
+        car_ctrl.x_k(2) = 0;
+
+        if (!mpc_sp->solve_MPC_QP_no_constraints(car_ctrl.x_k.cast<double>()))
+        {
+            cout << "mpc solve fault" << endl;
+        }
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_sp->u_apply(0), mpc_filter, thr_filter);
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;
