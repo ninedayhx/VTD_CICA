@@ -40,12 +40,16 @@ osqp:
   timelim: 0.005
   priter: 3
 ctrl:
-  bias1: -6.0
+  bias1: 2.0
   bias2: 0.0
   mpc_filter: 1.0
   thr_filter: 1.0
+  LQR_af: 1.0
+  LQR_uf: 1.0
   last_dis: 22.0
-  pub_log: 0
+  test_dis: 403
+  pub_log: 1
   sp_p: 1.0
   sp_i: 0.0
   sp_d: 0.1
+  use_soft_start: 0

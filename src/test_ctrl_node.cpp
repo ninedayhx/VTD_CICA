@@ -61,10 +61,12 @@ int main(int argc, char **argv)
     car_ctrl.last_dis = cfg["ctrl"]["last_dis"].as<float>();
     car_ctrl.bias1 = cfg["ctrl"]["bias1"].as<float>();
     car_ctrl.bias2 = cfg["ctrl"]["bias2"].as<float>();
+    car_ctrl.test_dis = cfg["ctrl"]["test_dis"].as<float>();
     pub_log = cfg["ctrl"]["pub_log"].as<int>();
     car_ctrl.sp_p = cfg["ctrl"]["sp_p"].as<float>();
     car_ctrl.sp_i = cfg["ctrl"]["sp_i"].as<float>();
     car_ctrl.sp_d = cfg["ctrl"]["sp_d"].as<float>();
+    car_ctrl.use_soft_start = cfg["ctrl"]["use_soft_start"].as<int>();
 
     cout << "-----controller param-----" << endl;
     cout << "mpc filter: " << mpc_filter << endl;
@@ -93,7 +95,7 @@ int main(int argc, char **argv)
              0,  0,  1000;
     R_lon << 50;
     LQR_longtitute.get_param(Q_lon, R_lon, 0.01);
-
+    
     Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
 
     Q_lon_du << 75,  0,  0,   0,
@@ -204,6 +206,12 @@ void controller_callback(const ros::TimerEvent &e)
     //     LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
     //     // cout << "change" << endl;
     // }
+
+    if (car_ctrl.self.p_x <= car_ctrl.test_dis && car_ctrl.car_cur.size() >= 2)
+    {
+        car_ctrl.self.start_follow = 0;
+        car_ctrl.start_flag = 0;
+    }
     if (car_ctrl.self.p_y > 45 && car_ctrl.self.phi > M_PI * 0.25 && car_ctrl.self.phi < M_PI * 0.75)
     {
         LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
@@ -231,33 +239,38 @@ void controller_callback(const ros::TimerEvent &e)
     }
     else
     {
-        // float t_in = 0.01;
-        // a_tmp = a_tmp + 2.0 * t_in;
-        // if (a_tmp >= 3)
-        // {
-        //     // cout << "test" << endl;
-        //     a_tmp = 3;
-        // }
-        // car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
-        // if (car_ctrl.lon_v_des >= 30)
-        // {
-        //     // cout << "test" << endl;
-        //     car_ctrl.lon_v_des = 30;
-        // }
-        car_ctrl.lon_v_des = 30;
-        ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        // cout << "no leader, self speed... lane = " << endl;
-
-        // car_ctrl.update_state_vec();
-        // car_ctrl.x_k(0) = 0;
-        // car_ctrl.x_k(1) = 30 / 3.6 - car_ctrl.self.v_x;
-        // car_ctrl.x_k(2) = 0;
-
-        // if (!mpc_sp->solve_MPC_QP_no_constraints(car_ctrl.x_k.cast<double>()))
-        // {
-        //     cout << "mpc solve fault" << endl;
-        // }
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_sp->u_apply(0), mpc_filter, thr_filter);
+        if(car_ctrl.use_soft_start == 0)
+        {
+            car_ctrl.lon_v_des = 30;
+            ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+        }
+        else
+        {
+            if(car_ctrl.self.v_x > 0 && car_ctrl.start_flag == 0)
+            {
+                car_ctrl.lon_v_des = car_ctrl.self.v_x * 3.6;
+                a_tmp = car_ctrl.self.a_x;
+                car_ctrl.start_flag = 1;
+            }
+            if(car_ctrl.start_flag)
+            {
+                float t_in = 0.01;
+                a_tmp = a_tmp + 2.0 * t_in;
+                if (a_tmp >= 3)
+                {
+                    // cout << "test" << endl;
+                    a_tmp = 3;
+                }
+                car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+                if (car_ctrl.lon_v_des >= 30)
+                {
+                    // cout << "test" << endl;
+                    car_ctrl.lon_v_des = 30;
+                }
+                // car_ctrl.lon_v_des = 30;
+                ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+            }
+        }
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;

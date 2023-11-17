@@ -175,9 +175,12 @@ class control_t
 public:
     const float search_dis = 40;
     float last_dis = 25;
+    float test_dis;
     float bias1 = 0;
     float bias2 = 0;
     float sp_p, sp_i, sp_d;
+    int start_flag;
+    int use_soft_start;
 
     car_self self;
     leader_t leader;

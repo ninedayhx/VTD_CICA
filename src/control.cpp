@@ -338,6 +338,7 @@ double lane_param::line_func(float *c, float x)
 
 void control_t::leader_update()
 {
+    static int last_flag = 0;
     int car_num = obt.car.size();
     if (car_num == 0)
     {
@@ -365,22 +366,35 @@ void control_t::leader_update()
             // std::cout << "car_oth" << std::endl;
             self.start_follow = 1;
             leader.update(car_oth[oth_itr], lane, self);
+            last_flag = self.start_follow;
         }
         else
         {
             // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
+
             self.start_follow = 0;
+            if (last_flag != self.start_follow)
+            {
+                start_flag = 0;
+            }
+            last_flag = self.start_follow;
         }
         if (itr >= 0)
         {
             // std::cout << "car_cur" << std::endl;
             self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
+            last_flag = self.start_follow;
         }
         else
         {
             // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
             self.start_follow = 0;
+            if (last_flag != self.start_follow)
+            {
+                start_flag = 0;
+            }
+            last_flag = self.start_follow;
         }
         // std::cout << "stttt" << car_cur.size() << std::endl;
         // std::cout << "itr :" << itr << std::endl;
