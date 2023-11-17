@@ -177,6 +177,7 @@ public:
     float last_dis = 25;
     float bias1 = 0;
     float bias2 = 0;
+    float sp_p, sp_i, sp_d;
 
     car_self self;
     leader_t leader;

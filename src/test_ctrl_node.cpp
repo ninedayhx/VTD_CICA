@@ -62,6 +62,9 @@ int main(int argc, char **argv)
     car_ctrl.bias1 = cfg["ctrl"]["bias1"].as<float>();
     car_ctrl.bias2 = cfg["ctrl"]["bias2"].as<float>();
     pub_log = cfg["ctrl"]["pub_log"].as<int>();
+    car_ctrl.sp_p = cfg["ctrl"]["sp_p"].as<float>();
+    car_ctrl.sp_i = cfg["ctrl"]["sp_i"].as<float>();
+    car_ctrl.sp_d = cfg["ctrl"]["sp_d"].as<float>();
 
     cout << "-----controller param-----" << endl;
     cout << "mpc filter: " << mpc_filter << endl;
@@ -69,6 +72,9 @@ int main(int argc, char **argv)
     cout << "  last_dis: " << car_ctrl.last_dis << endl;
     cout << "     bias1: " << car_ctrl.bias1 << endl;
     cout << "     bias2: " << car_ctrl.bias2 << endl;
+    cout << "      sp_p: " << car_ctrl.sp_p << endl;
+    cout << "      sp_i: " << car_ctrl.sp_i << endl;
+    cout << "      sp_d: " << car_ctrl.sp_d << endl;
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 

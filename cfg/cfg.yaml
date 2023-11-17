@@ -46,3 +46,6 @@ ctrl:
   thr_filter: 1.0
   last_dis: 22.0
   pub_log: 0
+  sp_p: 1.0
+  sp_i: 0.0
+  sp_d: 0.1
