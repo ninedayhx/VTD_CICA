@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "ros/ros.h"
+#include "std_msgs/Float32MultiArray.h"
 
 #include "common_msgs/Control_Test.h"
 #include "common_msgs/CICV_Location.h"
@@ -66,6 +67,7 @@ ros::Subscriber location_sub;
 ros::Subscriber obstacle_sub;
 ros::Subscriber lane_sub;
 ros::Timer score;
+ros::Publisher debug_pub;
 
 void location_callback(const common_msgs::CICV_Location &msg);
 void obstacle_callback(const common_msgs::Perceptionobjects &msg);
@@ -74,6 +76,7 @@ void observe_callback(const ros::TimerEvent &e);
 
 int main(int argc, char **argv)
 {
+    car_obs.last_dis = 35;
     plotnum = 500;
     visy.resize(plotnum);
     plotx0.resize(plotnum);
@@ -93,6 +96,7 @@ int main(int argc, char **argv)
     obstacle_sub = nh.subscribe("/tpperception", 1000, obstacle_callback);
     lane_sub = nh.subscribe("/LaneDetection", 1000, lane_callback);
     score = nh.createTimer(ros::Duration(car_obs.sample_time), observe_callback);
+    debug_pub = nh.advertise<std_msgs::Float32MultiArray>("/score_debug_log", 1000, false);
 
     start_time = std::chrono::steady_clock::now();
 
@@ -168,7 +172,12 @@ void observe_callback(const ros::TimerEvent &e)
 void car_obs_t::sample_data()
 {
     static int follow_flag = 0;
-    float dis_des = 5 + 1.5 * self.v_x;
+    // static int dis_tmp = 0;
+
+    static float dddd = 0;
+
+    car_obs.update_state_vec();
+
     frame_sum++;
     if (self.a_x < -5 || self.a_x > 3)
     {
@@ -189,11 +198,16 @@ void car_obs_t::sample_data()
 
     if (self.start_follow)
     {
+        float dis_des = 5 + 1.5 * leader.v_x;
         follow_coef = (leader.line_len - dis_des) / dis_des;
 
-        if (follow_flag == 0 && self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
+        if (self.v_x >= 0.6 * leader.v_x && self.v_x <= 1.4 * leader.v_x)
         {
             follow_flag = 1;
+        }
+        else
+        {
+            follow_flag = 0;
         }
         if (follow_flag == 1)
         {
@@ -201,8 +215,9 @@ void car_obs_t::sample_data()
             if (follow_coef <= -0.5 || follow_coef >= 0.3)
             {
                 not_idea_cnt++;
+                dddd = leader.line_len;
             }
-            if (follow_coef <= -0.65 || follow_coef >= 0.6)
+            if (follow_coef <= -0.7 || follow_coef >= 0.9)
             {
                 is_complete = 0;
             }
@@ -213,8 +228,21 @@ void car_obs_t::sample_data()
               << " ay_c: " << ay_cnt
               << " jx_c: " << jx_cnt
               << " jy_c: " << jy_cnt
-              << " ni_f: " << not_idea_cnt << std::endl;
+              << " ni_f: " << not_idea_cnt
+              << " fo_c: " << follow_coef
+              << "    d: " << dddd << std::endl;
 #endif
+
+    std_msgs::Float32MultiArray dmsg;
+    dmsg.data.resize(6);
+    dmsg.data[0] = car_obs.x_k(0);
+    dmsg.data[1] = car_obs.x_k(1);
+    dmsg.data[2] = car_obs.x_k(2);
+    dmsg.data[3] = car_obs.self.a_x;
+    dmsg.data[4] = car_obs.leader.a_x;
+    dmsg.data[5] = car_obs.self.j_x;
+
+    debug_pub.publish(dmsg);
 }
 
 void car_obs_t::compute_score()

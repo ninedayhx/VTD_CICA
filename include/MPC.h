@@ -18,6 +18,7 @@
 #include "eigen3/Eigen/Eigen"
 #include "eigen3/unsupported/Eigen/MatrixFunctions"
 #include "OsqpEigen/OsqpEigen.h"
+#include "yaml-cpp/yaml.h"
 
 // #define MPC_LOG
 
@@ -28,6 +29,9 @@ using EVXd = Eigen::VectorXd;
 class MPC_t
 {
 public:
+    int use_lqr = 1;
+    int is_log;
+
     int Np;                               // 预测或控制时域 Np = Nc
     int Nc;                               // unuse
     int n;                                // 状态变量维度
@@ -54,13 +58,14 @@ public:
                                           //
     ESMd H_s, L_s;                        // 软约束后的hessian和线性约束矩阵
     EVXd grad_s, LB_s, UB_s;              // 软约束
-    const double rho[3] = {0, 0, 1};      //
+    EVXd rho;                             //
     EVXd epsilon;                         //
     double max_ub, min_ub, dm_ub, dis_ub; //
                                           //
     OsqpEigen::Solver solver;             //
 
-    bool solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, bool is_log);
+    bool solver_init(ESMd h, EVXd grad_, bool is_log);
+    bool solver_init(ESMd h, EVXd grad_, EVXd lb, EVXd ub, ESMd l, YAML::Node cfg, bool is_log);
     void discrete(EMXd A, EMXd B, int type);
     void predict_AB(EMXd A, EMXd B);
     void augmenting_Q(EMXd Q);
@@ -68,9 +73,9 @@ public:
     void compute_Hessian();
     void compute_Hessian_with_slack(int sc_num);
     void compute_gradient(EMXd x_k);
-    void compute_Linear_mat_with_slack(int sc_num);
+    void compute_Linear_mat_with_slack(int sc_num, int is_u_sf, int is_du_sf, int is_fc_sf);
     bool solve_MPC_QP_no_constraints(EMXd x_k);
-    bool solve_MPC_QP_with_constraints(EMXd x_k, bool is_soft);
+    bool solve_MPC_QP_with_constraints(EMXd x_k, EMXd lqr_k, bool is_soft);
 
     // MPC_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_);
 };
@@ -78,14 +83,16 @@ public:
 class MPC_follow_t : public MPC_t
 {
 public:
-    const double du_max = 0.04; // u最大增量
-    const double u_max = 3;     // u上界约束
-    const double u_min = -5;    // u下界约束
-    EVXd U_max, U_min, dU_max, V_self;
+    int use_a_last;
+    double du_max = 0.04; // u最大增量
+    double u_max = 3;     // u上界约束
+    double u_min = -5;    // u下界约束
+    double fc_lb, fc_ub;
+    EVXd U_max, U_min, dU_max, V_l;
 
     EMXd W, E;
 
-    MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, int Np_, int constraint_type, int sc_num);
+    MPC_follow_t(EMXd A, EMXd B, EMXd Q, EMXd R, EVXd _rho, int Np_, int constraint_type, int sc_num, YAML::Node cfg);
     void compute_inequality_constraints(EVXd xk, double v, bool is_soft, double a_last);
     void add_soft_constraint();
 };

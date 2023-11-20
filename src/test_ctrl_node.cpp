@@ -11,8 +11,10 @@
 
 // ros
 #include <ros/ros.h>
+#include <ros/package.h>
 #include "std_msgs/Float32.h"
 #include "std_msgs/Float32MultiArray.h"
+#include "yaml-cpp/yaml.h"
 
 #include "control.h"
 
@@ -22,13 +24,15 @@ using namespace std;
 
 chrono::_V2::steady_clock::time_point start_time;
 
-float mpc_filter;
+float mpc_filter, thr_filter;
+int pub_log;
+YAML::Node cfg;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
 Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
 Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
-MPC_follow_t *mpc_lon;
+MPC_follow_t *mpc_lon, *mpc_sp;
 
 common_msgs::Control_Test ctrl_msg;
 ros::Subscriber location_sub;
@@ -43,24 +47,38 @@ void location_callback(const common_msgs::CICV_Location &msg);
 void obstacle_callback(const common_msgs::Perceptionobjects &msg);
 void lane_callback(const common_msgs::Lanes &msg);
 void controller_callback(const ros::TimerEvent &e);
+YAML::Node load_params(string path);
 
 int main(int argc, char **argv)
 {
-    cout << argc << endl;
-    if (argc == 4)
-    {
-        mpc_filter = atof(argv[2]);
-        car_ctrl.last_dis = atof(argv[3]);
-        cout << "param set" << endl;
-    }
-    else
-    {
-        cout << "using default param" << endl;
-        mpc_filter = 0.02;
-        car_ctrl.last_dis = 25;
-    }
+    // yaml 需要使用空格缩进
+    string cfg_path = ros::package::getPath("test_ctrl") + "/cfg/cfg.yaml";
+    cfg = load_params(cfg_path);
+    YAML::Node osqp_cfg = cfg["osqp"];
+
+    mpc_filter = cfg["ctrl"]["mpc_filter"].as<float>();
+    thr_filter = cfg["ctrl"]["thr_filter"].as<float>();
+    car_ctrl.last_dis = cfg["ctrl"]["last_dis"].as<float>();
+    car_ctrl.bias1 = cfg["ctrl"]["bias1"].as<float>();
+    car_ctrl.bias2 = cfg["ctrl"]["bias2"].as<float>();
+    car_ctrl.test_dis = cfg["ctrl"]["test_dis"].as<float>();
+    pub_log = cfg["ctrl"]["pub_log"].as<int>();
+    car_ctrl.sp_p = cfg["ctrl"]["sp_p"].as<float>();
+    car_ctrl.sp_i = cfg["ctrl"]["sp_i"].as<float>();
+    car_ctrl.sp_d = cfg["ctrl"]["sp_d"].as<float>();
+    car_ctrl.use_soft_start = cfg["ctrl"]["use_soft_start"].as<int>();
+
+    cout << "-----controller param-----" << endl;
     cout << "mpc filter: " << mpc_filter << endl;
+    cout << "thr filter: " << thr_filter << endl;
     cout << "  last_dis: " << car_ctrl.last_dis << endl;
+    cout << "     bias1: " << car_ctrl.bias1 << endl;
+    cout << "     bias2: " << car_ctrl.bias2 << endl;
+    cout << "      sp_p: " << car_ctrl.sp_p << endl;
+    cout << "      sp_i: " << car_ctrl.sp_i << endl;
+    cout << "      sp_d: " << car_ctrl.sp_d << endl;
+    cout << "use_soft_start: " << car_ctrl.use_soft_start << endl;
+
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 
@@ -77,13 +95,13 @@ int main(int argc, char **argv)
     Q_lon << 60, 0,  0,
              0,  10, 0,
              0,  0,  1000;
-    R_lon << 100;
+    R_lon << 50;
     LQR_longtitute.get_param(Q_lon, R_lon, 0.01);
-
+    
     Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
 
     Q_lon_du << 75,  0,  0,   0,
-                0,   1, 0,   0,
+                0,   1,  0,   0,
                 0,   0,  1,  0,
                 0,   0,  0,   1000;
     R_lon_du << 500;
@@ -94,15 +112,30 @@ int main(int argc, char **argv)
              0,100,0,
              0,0,100;
     R_mpc << 5;
-    // A_test = 2*A_test.setIdentity(3,3);
-    // B_test.setOnes();
     // clang-format on
+
+    const vector<double> QVec = cfg["mpc"]["Q"].as<vector<double>>();
+    Q_mpc(0, 0) = QVec[0];
+    Q_mpc(1, 1) = QVec[4];
+    Q_mpc(2, 2) = QVec[8];
+    R_mpc(0, 0) = cfg["mpc"]["R"].as<double>();
+    Eigen::VectorXd Rho;
+    Rho.resize(3);
+    const vector<double> rhoVec = cfg["mpc"]["rho"].as<vector<double>>();
+    for (int i = 0; i < 3; i++)
+    {
+        Rho(i) = rhoVec[i];
+    }
 
     mpc_lon = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
-                               80, 2, 3);
+                               Rho,
+                               cfg["mpc"]["Np"].as<int>(),
+                               2,
+                               3,
+                               cfg);
 
     ros::init(argc, argv, "test_ctrl_node");
     ros::NodeHandle nh;
@@ -118,7 +151,7 @@ int main(int argc, char **argv)
     start_time = std::chrono::steady_clock::now();
 
     // LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
-    // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
+    LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
     // LQR_lon_du.compute_ARE(car_ctrl.follow_du_mod.A, car_ctrl.follow_du_mod.B, false);
 
     // ros::Rate loop_rate(100);
@@ -149,15 +182,13 @@ void lane_callback(const common_msgs::Lanes &msg)
 void controller_callback(const ros::TimerEvent &e)
 {
     static float a_tmp = 0;
+    static int s_flag = 0;
 
-    // static int cnt = 0;
-    // cnt++;
-    // if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.02 && abs(car_ctrl.lane.lane_phi) <= 0.002)
-    // {
-    //     // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
-    //     LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
-    //     // cout << "change" << endl;
-    // }
+    if (car_ctrl.self.p_x <= car_ctrl.test_dis && car_ctrl.car_cur.size() >= 2)
+    {
+        car_ctrl.self.start_follow = 0;
+        car_ctrl.start_flag = 0;
+    }
     if (car_ctrl.self.p_y > 45 && car_ctrl.self.phi > M_PI * 0.25 && car_ctrl.self.phi < M_PI * 0.75)
     {
         LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
@@ -169,37 +200,71 @@ void controller_callback(const ros::TimerEvent &e)
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
-        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.self.v_x, true, (double)car_ctrl.self.a_x);
+        mpc_lon->compute_inequality_constraints(car_ctrl.x_k.cast<double>(), (double)car_ctrl.leader.v_x, true, (double)car_ctrl.self.a_x);
 
-        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), true))
+        if (!mpc_lon->solve_MPC_QP_with_constraints(car_ctrl.x_k.cast<double>(), LQR_longtitute.K.cast<double>(), true))
         {
             cout << "mpc solve fault" << endl;
         }
-        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter);
-
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), 0.1);
-
-        // cout << "following...  self lane: " << car_ctrl.lane.lane_locate << " leader lane: " << car_ctrl.leader.lane << endl;
+        ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter, thr_filter);
     }
     else
     {
-        // float t_in = 0.01;
-        // a_tmp = a_tmp + 2.0 * t_in;
-        // if (a_tmp >= 3)
-        // {
-        //     // cout << "test" << endl;
-        //     a_tmp = 3;
-        // }
-        // car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
-        // if (car_ctrl.lon_v_des >= 30)
-        // {
-        //     // cout << "test" << endl;
-        //     car_ctrl.lon_v_des = 30;
-        // }
-        car_ctrl.lon_v_des = 30;
-        ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
-        // cout << "no leader, self speed... lane = " << endl;
+        if (car_ctrl.use_soft_start == 0)
+        {
+            if (car_ctrl.self.v_x > 0 && s_flag == 0)
+            {
+                // std::cout << "test5" << std::endl;
+                car_ctrl.lon_v_des = car_ctrl.self.v_x * 3.6;
+                // a_tmp = car_ctrl.self.a_x;
+                s_flag = 1;
+            }
+            if (s_flag == 1)
+            {
+                float t_in = 0.01;
+                a_tmp = a_tmp + 1.0 * t_in;
+                if (a_tmp >= 3)
+                {
+                    // cout << "test" << endl;
+                    a_tmp = 3;
+                }
+                car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+                if (car_ctrl.lon_v_des >= 30)
+                {
+                    // cout << "test" << endl;
+                    car_ctrl.lon_v_des = 30;
+                }
+                ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+            }
+        }
+        else
+        {
+            if (car_ctrl.self.v_x > 0 && car_ctrl.start_flag == 0)
+            {
+                std::cout << "test5" << std::endl;
+                car_ctrl.lon_v_des = car_ctrl.self.v_x * 3.6;
+                a_tmp = car_ctrl.self.a_x;
+                car_ctrl.start_flag = 1;
+            }
+            if (car_ctrl.start_flag == 1)
+            {
+                float t_in = 0.01;
+                a_tmp = a_tmp + 2.0 * t_in;
+                if (a_tmp >= 3)
+                {
+                    // cout << "test" << endl;
+                    a_tmp = 3;
+                }
+                car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+                if (car_ctrl.lon_v_des >= 30)
+                {
+                    // cout << "test" << endl;
+                    car_ctrl.lon_v_des = 30;
+                }
+                // car_ctrl.lon_v_des = 30;
+                ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+            }
+        }
     }
 
     // cout << "self p" << car_self.lane.lane_locate << "lead p " << car_self.leader.lane << endl;
@@ -209,21 +274,42 @@ void controller_callback(const ros::TimerEvent &e)
     ctrl_pub.publish(ctrl_msg);
 
     std_msgs::Float32MultiArray dmsg;
-    dmsg.data.resize(14);
-    dmsg.data[0] = car_ctrl.x_k(0);
-    dmsg.data[1] = car_ctrl.x_k(1);
-    dmsg.data[2] = car_ctrl.x_k(2);
-    dmsg.data[3] = (float)mpc_lon->u_apply(0);
-    dmsg.data[4] = car_ctrl.self.a_des_f;
-    dmsg.data[5] = car_ctrl.self.u_des;
-    dmsg.data[6] = car_ctrl.self.a_x;
-    dmsg.data[7] = car_ctrl.self.j_x;
-    dmsg.data[8] = car_ctrl.leader.a_x;
-    dmsg.data[9] = car_ctrl.self.a_x;
-    dmsg.data[10] = mpc_lon->du;
-    dmsg.data[11] = kmphTomps(car_ctrl.lon_v_des);
-    dmsg.data[12] = car_ctrl.self.v_x;
-    dmsg.data[13] = car_ctrl.lon_a_des;
 
-    debug_pub.publish(dmsg);
+    if (pub_log == 1)
+    {
+        dmsg.data.resize(14);
+        dmsg.data[0] = car_ctrl.x_k(0);
+        dmsg.data[1] = car_ctrl.x_k(1);
+        dmsg.data[2] = car_ctrl.x_k(2);
+        dmsg.data[3] = (float)mpc_lon->u_apply(0);
+        dmsg.data[4] = car_ctrl.self.a_des_f;
+        dmsg.data[5] = car_ctrl.self.u_des;
+        dmsg.data[6] = car_ctrl.self.a_x;
+        dmsg.data[7] = car_ctrl.self.j_x;
+        dmsg.data[8] = car_ctrl.leader.a_x;
+        dmsg.data[9] = car_ctrl.self.a_x;
+        dmsg.data[10] = mpc_lon->du;
+        dmsg.data[11] = mpc_lon->epsilon[0];
+        dmsg.data[12] = mpc_lon->epsilon[1];
+        dmsg.data[13] = mpc_lon->epsilon[2];
+
+        debug_pub.publish(dmsg);
+    }
+}
+
+YAML::Node load_params(string path)
+{
+    YAML::Node tmp;
+    try
+    {
+        cout << "cfg path:" << path << endl;
+        tmp = YAML::LoadFile(path);
+        return tmp;
+    }
+    catch (YAML::ParserException)
+    {
+        cout << "config file no found, check first" << endl;
+        tmp = YAML::Load("{0}");
+        return tmp;
+    }
 }

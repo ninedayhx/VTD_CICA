@@ -24,10 +24,12 @@ float degTorad(float deg)
 float kmphTomps(float kmph)
 {
     float mps = kmph / 3.6;
+    return mps;
 }
 float mpsTokmph(float mps)
 {
     float kmph = mps * 3.6;
+    return kmph;
 }
 /***********************************************/
 /*                   构造函数                   */
@@ -133,10 +135,10 @@ void car_self::update(const common_msgs::CICV_Location &msg, lane_param _lane)
     lane = _lane.lane_locate;
 }
 
-common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg)
+common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float a_filter, float u_filter)
 {
     double u;
-    float alpha = filter_arg;
+    float alpha = a_filter;
     float a_des = a;
     static float a_last = 0;
     static float u_last = 0;
@@ -186,8 +188,8 @@ common_msgs::Control_Test car_self::acc_to_Thr_and_Bra(float a, float filter_arg
         }
     }
 
-    // u = u * 0.1 + u_last * 0.9;
-    // u_last = u;
+    u = u * u_filter + u_last * (1 - u_filter);
+    u_last = u;
     // std::cout << "u_filter" << u << std::endl;
     u_des = u;
 
@@ -336,6 +338,7 @@ double lane_param::line_func(float *c, float x)
 
 void control_t::leader_update()
 {
+    static int last_flag = 0;
     int car_num = obt.car.size();
     if (car_num == 0)
     {
@@ -358,24 +361,46 @@ void control_t::leader_update()
         int oth_itr = is_lane_changing(car_oth);
         int itr = find_the_latest(car_cur);
 
+        if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
+        {
+            // std::cout << "car_oth" << std::endl;
+            self.start_follow = 1;
+            leader.update(car_oth[oth_itr], lane, self);
+            last_flag = self.start_follow;
+            // std::cout << "test1" << std::endl;
+        }
+        else
+        {
+            // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
+
+            self.start_follow = 0;
+            if (last_flag != self.start_follow)
+            {
+                start_flag = 0;
+                // std::cout << "test2" << std::endl;
+            }
+            last_flag = self.start_follow;
+        }
         if (itr >= 0)
         {
             // std::cout << "car_cur" << std::endl;
             self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
-        }
-        else if ((oth_itr >= 0) && (pow(car_oth[oth_itr].x, 2) + pow(car_oth[oth_itr].y, 2) <= 20 * 20))
-        {
-            // std::cout << "car_oth" << std::endl;
-            self.start_follow = 1;
-            leader.update(car_oth[oth_itr], lane, self);
+            last_flag = self.start_follow;
+            // std::cout << "test3" << std::endl;
         }
         else
         {
             // std::cout << "oth_itr " << oth_itr << " cur_itr " << itr << std::endl;
             self.start_follow = 0;
+            if (last_flag != self.start_follow)
+            {
+                start_flag = 0;
+                // std::cout << "test4" << std::endl;
+            }
+            last_flag = self.start_follow;
         }
-        // std::cout << "stttt" << car_cur.size() << std::endl;
+        // std::cout << "----------------------" << std::endl;
         // std::cout << "itr :" << itr << std::endl;
     }
 }
@@ -625,13 +650,13 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     static float err3 = 0;
     static float u_last = 0;
     float kp, ki, kd, des, err, du, u;
-    kp = 1;
-    ki = 0;
-    kd = 0.1;
+    // kp = 1;
+    // ki = 0;
+    // kd = 0.1;
 
     err = speed_des * 1000 / 60 / 60 - self.v_x;
 
-    du = kp * (err - err2) + ki * err + kd * (err - 2 * err2 + err3);
+    du = sp_p * (err - err2) + sp_i * err + sp_d * (err - 2 * err2 + err3);
 
     u = du + u_last;
 
@@ -645,7 +670,7 @@ common_msgs::Control_Test control_t::lon_speed_control(float speed_des)
     }
     lon_a_des = u;
 
-    return self.acc_to_Thr_and_Bra(u, 1);
+    return self.acc_to_Thr_and_Bra(u, 1, 1);
 }
 
 /**
@@ -756,7 +781,26 @@ float control_t::leader_follow_LQR_du_control(LQR _lqr)
 
 void control_t::update_state_vec()
 {
-    self.L_des = 5 + 1.5 * self.v_x;
+    self.L_des = 5 + 1.5 * leader.v_x;
+
+    if ((self.p_x <= 460) && car_cur.size() >= 2)
+    {
+
+        self.L_des = self.L_des + bias1;
+        // std::cout << "cur_num" << car_cur.size() << std::endl;
+
+        // std::cout << "cur_dis1:" << pow(pow(car_cur[0].x, 2) + pow(car_cur[0].y, 2), 0.5) << std::endl;
+        // std::cout << "cur_dis2:" << pow(pow(car_cur[1].x, 2) + pow(car_cur[1].y, 2), 0.5) << std::endl;
+    }
+    else
+    {
+        // std::cout << "cur_num" << car_cur.size() << std::endl;
+    }
+
+    if (self.p_y <= -10 && self.phi > M_PI * 5 / 4 && self.phi < M_PI * 7 / 4)
+    {
+        self.L_des = self.L_des + bias2;
+    }
 
     x_k(0) = leader.line_len - self.L_des;
     x_k(1) = leader.v_x - self.v_x;
