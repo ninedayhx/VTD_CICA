@@ -33,7 +33,7 @@ set(CATKIN_DEPENDS
 	roslib
 	tf
 	std_msgs
-	common_msgs
+	geometry_msgs
 	message_generation
 	# dynamic_reconfigure
 )
@@ -50,9 +50,9 @@ find_package(yaml-cpp REQUIRED)
 
 # generate_dynamic_reconfigure_options(cfg/config.cfg) 
 
-# find_package(Python3 COMPONENTS Development NumPy REQUIRED)
-# message(${Python3_INCLUDE_DIRS} )
-# message(${Python3_NumPy_INCLUDE_DIRS})
+find_package(Python3 COMPONENTS Development NumPy REQUIRED)
+message(${Python3_INCLUDE_DIRS} )
+message(${Python3_NumPy_INCLUDE_DIRS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -88,15 +88,16 @@ find_package(yaml-cpp REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-# FILES
-# 	CICV_Location.msg  
-# 	Lane.msg   
-# 	Perceptionobject.msg
-# 	Control_Test.msg   
-# 	Lanes.msg  
-# 	Perceptionobjects.msg
-# )
+add_message_files(
+	DIRECTORY msg
+		FILES
+			CICV_Location.msg  
+			Lane.msg   
+			Perceptionobject.msg
+			Control_Test.msg   
+			Lanes.msg  
+			Perceptionobjects.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -113,10 +114,11 @@ find_package(yaml-cpp REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-# 	DEPENDENCIES
-# 	std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+	DEPENDENCIES
+	geometry_msgs
+	std_msgs  # Or other packages containing msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -171,8 +173,8 @@ include_directories(
 	# ${PROJECT_SOURCE_DIR}/thirdparty/osqp/include
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp/include/osqp
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/include
-	# ${Python3_INCLUDE_DIRS} 
-	# ${Python3_NumPy_INCLUDE_DIRS}
+	${Python3_INCLUDE_DIRS} 
+	${Python3_NumPy_INCLUDE_DIRS}
 	# /usr/local/include/OsqpEigen
 	# /usr/local/include/osqp
 	# /usr/local/share/osqp/codegen_files/inc/private
@@ -212,17 +214,17 @@ target_link_libraries(${PROJECT_NAME}_node
 
 )
 
-# add_executable(score
-# 	src/score.cpp
-# 	src/control.cpp
-# )
+add_executable(score
+	src/score.cpp
+	src/control.cpp
+)
 
-# target_link_libraries(score
-# 	${catkin_LIBRARIES}
-# 	${EIGEN3_LIBS}
-# 	Python3::Python 
-# 	Python3::NumPy
-# )
+target_link_libraries(score
+	${catkin_LIBRARIES}
+	${EIGEN3_LIBS}
+	Python3::Python 
+	Python3::NumPy
+)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
