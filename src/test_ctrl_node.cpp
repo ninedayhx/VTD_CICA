@@ -77,6 +77,8 @@ int main(int argc, char **argv)
     cout << "      sp_p: " << car_ctrl.sp_p << endl;
     cout << "      sp_i: " << car_ctrl.sp_i << endl;
     cout << "      sp_d: " << car_ctrl.sp_d << endl;
+    cout << "use_soft_start: " << car_ctrl.use_soft_start << endl;
+
     // clang-format off
     // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 
@@ -110,45 +112,30 @@ int main(int argc, char **argv)
              0,100,0,
              0,0,100;
     R_mpc << 5;
+    // clang-format on
+
     const vector<double> QVec = cfg["mpc"]["Q"].as<vector<double>>();
-    Q_mpc(0,0) = QVec[0];
-    Q_mpc(1,1) = QVec[4];
-    Q_mpc(2,2) = QVec[8];
-    R_mpc(0,0) = cfg["mpc"]["R"].as<double>();
+    Q_mpc(0, 0) = QVec[0];
+    Q_mpc(1, 1) = QVec[4];
+    Q_mpc(2, 2) = QVec[8];
+    R_mpc(0, 0) = cfg["mpc"]["R"].as<double>();
     Eigen::VectorXd Rho;
     Rho.resize(3);
     const vector<double> rhoVec = cfg["mpc"]["rho"].as<vector<double>>();
-    for(int i=0; i<3; i++)
+    for (int i = 0; i < 3; i++)
     {
         Rho(i) = rhoVec[i];
     }
-    // A_test = 2*A_test.setIdentity(3,3);
-    // B_test.setOnes();
 
     mpc_lon = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
                                car_ctrl.follow_leader_mod.B.cast<double>(),
                                Q_mpc,
                                R_mpc,
                                Rho,
-                               cfg["mpc"]["Np"].as<int>(), 
-                               2, 
+                               cfg["mpc"]["Np"].as<int>(),
+                               2,
                                3,
                                cfg);
-
-    // Eigen::MatrixXd Q_sp(3, 3), R_sp(1, 1);
-    // Q_sp << 0, 0, 0,
-    //         0, 1000, 0,
-    //         0, 0, 0;
-    // R_sp << 500;
-    // // A_test = 2*A_test.setIdentity(3,3);
-    // // B_test.setOnes();
-    // // clang-format on
-
-    // mpc_sp = new MPC_follow_t(car_ctrl.follow_leader_mod.A.cast<double>(),
-    //                           car_ctrl.follow_leader_mod.B.cast<double>(),
-    //                           Q_sp,
-    //                           R_sp,
-    //                           40, 0, 0);
 
     ros::init(argc, argv, "test_ctrl_node");
     ros::NodeHandle nh;
@@ -195,17 +182,7 @@ void lane_callback(const common_msgs::Lanes &msg)
 void controller_callback(const ros::TimerEvent &e)
 {
     static float a_tmp = 0;
-
-    // LQR_longtitute.compute_ARE(car_ctrl.follow_leader_mod.A, car_ctrl.follow_leader_mod.B, true);
-
-    // static int cnt = 0;
-    // cnt++;
-    // if (cnt > 800 && abs(car_ctrl.lane.lane_center_err) <= 0.02 && abs(car_ctrl.lane.lane_phi) <= 0.002)
-    // {
-    //     // cout << "ce: " << (car_ctrl.lane.lane_center_err) << " pe: " << car_ctrl.lane.lane_phi << endl;
-    //     LQR_lateral.get_param(Q_lat2, R_lat2, 0.01);
-    //     // cout << "change" << endl;
-    // }
+    static int s_flag = 0;
 
     if (car_ctrl.self.p_x <= car_ctrl.test_dis && car_ctrl.car_cur.size() >= 2)
     {
@@ -220,7 +197,6 @@ void controller_callback(const ros::TimerEvent &e)
     LQR_lateral.compute_ARE(car_ctrl.sim_err_mod.A, car_ctrl.sim_err_mod.B, true);
     // cout << "k" << LQR_lateral.K << endl;
 
-    // if (1 == -1)
     if (car_ctrl.self.start_follow)
     {
         car_ctrl.update_state_vec();
@@ -231,28 +207,46 @@ void controller_callback(const ros::TimerEvent &e)
             cout << "mpc solve fault" << endl;
         }
         ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra((float)mpc_lon->u_apply(0), mpc_filter, thr_filter);
-
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_du_control(LQR_lon_du), true);
-        // ctrl_msg = car_ctrl.self.acc_to_Thr_and_Bra(car_ctrl.leader_follow_LQR_control(LQR_longtitute), mpc_filter, thr_filter);
-
-        // cout << "following...  self lane: " << car_ctrl.lane.lane_locate << " leader lane: " << car_ctrl.leader.lane << endl;
     }
     else
     {
-        if(car_ctrl.use_soft_start == 0)
+        if (car_ctrl.use_soft_start == 0)
         {
-            car_ctrl.lon_v_des = 30;
-            ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+            if (car_ctrl.self.v_x > 0 && s_flag == 0)
+            {
+                // std::cout << "test5" << std::endl;
+                car_ctrl.lon_v_des = car_ctrl.self.v_x * 3.6;
+                // a_tmp = car_ctrl.self.a_x;
+                s_flag = 1;
+            }
+            if (s_flag == 1)
+            {
+                float t_in = 0.01;
+                a_tmp = a_tmp + 1.0 * t_in;
+                if (a_tmp >= 3)
+                {
+                    // cout << "test" << endl;
+                    a_tmp = 3;
+                }
+                car_ctrl.lon_v_des = car_ctrl.lon_v_des + mpsTokmph(a_tmp * t_in);
+                if (car_ctrl.lon_v_des >= 30)
+                {
+                    // cout << "test" << endl;
+                    car_ctrl.lon_v_des = 30;
+                }
+                ctrl_msg = car_ctrl.lon_speed_control(car_ctrl.lon_v_des);
+            }
         }
         else
         {
-            if(car_ctrl.self.v_x > 0 && car_ctrl.start_flag == 0)
+            if (car_ctrl.self.v_x > 0 && car_ctrl.start_flag == 0)
             {
+                std::cout << "test5" << std::endl;
                 car_ctrl.lon_v_des = car_ctrl.self.v_x * 3.6;
                 a_tmp = car_ctrl.self.a_x;
                 car_ctrl.start_flag = 1;
             }
-            if(car_ctrl.start_flag)
+            if (car_ctrl.start_flag == 1)
             {
                 float t_in = 0.01;
                 a_tmp = a_tmp + 2.0 * t_in;
@@ -281,7 +275,7 @@ void controller_callback(const ros::TimerEvent &e)
 
     std_msgs::Float32MultiArray dmsg;
 
-    if(pub_log ==1)
+    if (pub_log == 1)
     {
         dmsg.data.resize(14);
         dmsg.data[0] = car_ctrl.x_k(0);

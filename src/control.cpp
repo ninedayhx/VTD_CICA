@@ -367,6 +367,7 @@ void control_t::leader_update()
             self.start_follow = 1;
             leader.update(car_oth[oth_itr], lane, self);
             last_flag = self.start_follow;
+            // std::cout << "test1" << std::endl;
         }
         else
         {
@@ -376,6 +377,7 @@ void control_t::leader_update()
             if (last_flag != self.start_follow)
             {
                 start_flag = 0;
+                // std::cout << "test2" << std::endl;
             }
             last_flag = self.start_follow;
         }
@@ -385,6 +387,7 @@ void control_t::leader_update()
             self.start_follow = 1;
             leader.update(car_cur[itr], lane, self);
             last_flag = self.start_follow;
+            // std::cout << "test3" << std::endl;
         }
         else
         {
@@ -393,10 +396,11 @@ void control_t::leader_update()
             if (last_flag != self.start_follow)
             {
                 start_flag = 0;
+                // std::cout << "test4" << std::endl;
             }
             last_flag = self.start_follow;
         }
-        // std::cout << "stttt" << car_cur.size() << std::endl;
+        // std::cout << "----------------------" << std::endl;
         // std::cout << "itr :" << itr << std::endl;
     }
 }

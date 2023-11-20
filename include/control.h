@@ -179,7 +179,7 @@ public:
     float bias1 = 0;
     float bias2 = 0;
     float sp_p, sp_i, sp_d;
-    int start_flag;
+    int start_flag = 0;
     int use_soft_start;
 
     car_self self;
