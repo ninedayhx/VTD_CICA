@@ -278,21 +278,18 @@ void controller_callback(const ros::TimerEvent &e)
     if (pub_log == 1)
     {
         dmsg.data.resize(14);
-        dmsg.data[0] = car_ctrl.x_k(0);
-        dmsg.data[1] = car_ctrl.x_k(1);
-        dmsg.data[2] = car_ctrl.x_k(2);
-        dmsg.data[3] = (float)mpc_lon->u_apply(0);
-        dmsg.data[4] = car_ctrl.self.a_des_f;
-        dmsg.data[5] = car_ctrl.self.u_des;
-        dmsg.data[6] = car_ctrl.self.a_x;
-        dmsg.data[7] = car_ctrl.self.j_x;
-        dmsg.data[8] = car_ctrl.leader.a_x;
-        dmsg.data[9] = car_ctrl.self.a_x;
-        dmsg.data[10] = mpc_lon->du;
-        dmsg.data[11] = mpc_lon->epsilon[0];
-        dmsg.data[12] = mpc_lon->epsilon[1];
-        dmsg.data[13] = mpc_lon->epsilon[2];
+        dmsg.data[0] = car_ctrl.lane.lane_phi;
+        dmsg.data[1] = car_ctrl.lane.lane_center_err;
+        dmsg.data[2] = car_ctrl.self.a_y;
+        dmsg.data[3] = car_ctrl.self.j_y;
 
+        dmsg.data[4] = car_ctrl.x_k(0);
+        dmsg.data[5] = car_ctrl.x_k(1);
+        dmsg.data[6] = car_ctrl.x_k(2);
+        dmsg.data[7] = mpc_lon->u_apply(0);
+        dmsg.data[8] = mpc_lon->du;
+        dmsg.data[9] = car_ctrl.self.a_x;
+        dmsg.data[10] = car_ctrl.self.j_x;
         debug_pub.publish(dmsg);
     }
 }
