@@ -24,3 +24,16 @@ ros_ws
     └── VtdRosConnector
 ```
 then make it
+
+## VTD setup
+the scenarios file is in the other/ac_2023
+copy the file to the VTD install path just like
+```
+/VIRES/VTD.2022.4/Data/Projects/algorithmCompetition_2023/Scenarios/ac_2023
+```
+- `ac_juesai_ltest.xml、ac_juesai_rtest.xml` is for last competition scenarios
+![](./doc/ac_juesai_rtest.png)
+
+- `lat_lon.xml` is for the lateral and longtitude MPC algorithm control verification
+
+

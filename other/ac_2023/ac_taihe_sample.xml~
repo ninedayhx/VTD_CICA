@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Scenario>
+<Scenario RevMajor="2021" RevMinor="3">
+    <Layout Database="Projects/nc_2023/Databases/thq_0814/taiheqiao0710_xuanran.opt.osgb" File="Projects/nc_2023/Databases/thq_0814/OpenDRIVE_add_signal_adj_id_20230706.xodr"/>
+    <VehicleList ConfigFile="Distros/Current/Config/Players/Vehicles">
+        <VehicleDef DistFront="2.8340000000000001e+00" Mass="9.5000000000000000e+02" DistRight="8.0000000000000004e-01" MaxSpeed="1.3888888888888889e+01" MaxSteering="4.9602257341678851e-01" DistLeft="8.0000000000000004e-01" DistHeight="1.7949999999999999e+00" Name="Pji_Utility_Vehicle" DistRear="4.6600000000000003e-01"/>
+    </VehicleList>
+    <DriverList ConfigFile="Distros/Current/Config/Players/driverCfg.xml"/>
+    <CharacterList ConfigFile="Distros/Current/Config/Players/Pedestrians"/>
+    <ObjectList ConfigFile="Distros/Current/Config/Players/Objects"/>
+    <DynObjects Path="Distros/Current/Config/DynObjects/Logic"/>
+    <TrafficElements/>
+    <PulkTraffic/>
+    <TrafficControl>
+        <Player>
+            <Description Driver="DefaultDriver" Control="external" AdaptDriverToVehicleType="true" Type="Pji_Utility_Vehicle" Name="Ego"/>
+            <Init>
+                <Speed Value="0.0000000000000000e+00"/>
+                <PosAbsolute X="9.7571349294467268e+01" Y="6.9645001878316179e+00" Z="1.9226518958916522e+01" Direction="3.6592004530272071e+00" AlignToRoad="true"/>
+            </Init>
+        </Player>
+        <Player>
+            <Description Driver="DefaultDriver" Control="internal" AdaptDriverToVehicleType="true" Type="AlfaRomeo_Brera_10_BiancoSpino" Name="New Player"/>
+            <Init>
+                <Speed Value="0.0000000000000000e+00"/>
+                <PosAbsolute X="-6.5473136901855469e+01" Y="8.4066875457763672e+01" Z="1.9306321872820508e+01" Direction="6.0881928281993125e-01" AlignToRoad="true"/>
+            </Init>
+        </Player>
+        <PlayerActions Player="Ego">
+            <Action Name="">
+                <PosRelative CounterID="" CounterComp="COMP_EQ" NetDist="false" Distance="5.0000000000000000e+00" CounterVal="0" Pivot="Ego"/>
+                <EditorPos Radius="5.0000000000000000e+00" X="9.7571349294467268e+01" Y="6.9645001878316179e+00"/>
+            </Action>
+        </PlayerActions>
+        <PlayerActions Player="New Player">
+            <Action Name="">
+                <TTCRelative CounterID="" CounterComp="COMP_EQ" NetDist="false" CounterVal="0" Pivot="Ego" TTC="3.0000000000000000e+00"/>
+                <EditorPos Radius="3.0000000000000000e+00" X="9.7571349294467268e+01" Y="6.9645001878316179e+00"/>
+                <SpeedChange Rate="4.0000000000000000e+00" Target="0.0000000000000000e+00" Force="true" ExecutionTimes="1" ActiveOnEnter="true" DelayTime="0.0000000000000000e+00"/>
+            </Action>
+        </PlayerActions>
+    </TrafficControl>
+    <MovingObjectsControl>
+        <PathShape ShapeId="1" ShapeType="polyline" Closed="false" Name="PathShape01">
+            <Waypoint X="6.5889902114868164e+00" Y="-3.9139778137207031e+01" Options="0x00000000" Z="1.9264722414627155e+01" Weight="1.0000000000000000e+00" Yaw="5.2614140172565529e+00" Pitch="2.1190534341742283e-05" Roll="0.0000000000000000e+00" Time="0.0000000000000000e+00"/>
+            <Waypoint X="1.1101463317871094e+01" Y="-4.6515937805175781e+01" Options="0x00000000" Z="1.9264539180645240e+01" Weight="1.0000000000000000e+00" Yaw="5.2614140172565529e+00" Pitch="2.1190534341742283e-05" Roll="0.0000000000000000e+00" Time="0.0000000000000000e+00"/>
+        </PathShape>
+        <PathShape ShapeId="2" ShapeType="polyline" Closed="false" Name="PathShape02">
+            <Waypoint X="-8.0655624389648438e+01" Y="-5.7450740814208984e+01" Options="0x00000000" Z="1.9327637407811419e+01" Weight="1.0000000000000000e+00" Yaw="2.0699804791457224e+00" Pitch="6.2831617031549607e+00" Roll="0.0000000000000000e+00" Time="0.0000000000000000e+00"/>
+            <Waypoint X="-1.1937665557861328e+02" Y="1.3565277099609375e+01" Options="0x00000000" Z="1.9329546649960129e+01" Weight="1.0000000000000000e+00" Yaw="2.0699804791457224e+00" Pitch="6.2831617031549607e+00" Roll="0.0000000000000000e+00" Time="0.0000000000000000e+00"/>
+        </PathShape>
+        <Character CharacterType="male_adult" Class="pedestrian" Appearance="Christian" Name="New Character">
+            <StartPosAbs X="6.5661096572875977e+00" Y="-3.9158485412597656e+01" Z="1.9264733282039995e+01" Direction="5.2566163219779645e+00"/>
+        </Character>
+        <Character CharacterType="male_adult" Class="pedestrian" Appearance="Christian" Name="New Character01">
+            <StartPosAbs X="-8.0833015441894531e+01" Y="-5.7517448425292969e+01" Z="1.9327636956053166e+01" Direction="2.1095240382174207e+00"/>
+        </Character>
+        <CharacterActions Character="New Character">
+            <Action Name="">
+                <TTCRelative CounterID="" CounterComp="COMP_EQ" NetDist="false" CounterVal="0" Pivot="Ego" TTC="4.0000000000000000e+00"/>
+                <EditorPos Radius="4.0000000000000000e+00" X="9.7571349294467268e+01" Y="6.9645001878316179e+00"/>
+                <Motion Move="walk" Rate="0.0000000000000000e+00" Speed="1.7000000476837158e+00" Force="false" ExecutionTimes="1" ActiveOnEnter="true" DelayTime="0.0000000000000000e+00"/>
+                <CharacterPath Loop="false" PathShape="1" ExecutionTimes="1" ActiveOnEnter="true" DelayTime="0.0000000000000000e+00" Beam="true" ClampToGround="false"/>
+            </Action>
+        </CharacterActions>
+        <CharacterActions Character="New Character01">
+            <Action Name="">
+                <TTCRelative CounterID="" CounterComp="COMP_EQ" NetDist="false" CounterVal="0" Pivot="Ego" TTC="4.0000000000000000e+00"/>
+                <EditorPos Radius="4.0000000000000000e+00" X="9.7571349294467268e+01" Y="6.9645001878316179e+00"/>
+                <Motion Move="bicycle_ride" Rate="0.0000000000000000e+00" Speed="2.4944443702697754e+00" Force="false" ExecutionTimes="1" ActiveOnEnter="true" DelayTime="0.0000000000000000e+00"/>
+                <CharacterPath Loop="false" PathShape="2" ExecutionTimes="1" ActiveOnEnter="true" DelayTime="0.0000000000000000e+00" Beam="true" ClampToGround="false"/>
+            </Action>
+        </CharacterActions>
+        <Object Type="barrier" Name="New Object Copy 02" Definition="MiscBarrierRoadWork">
+            <StartPosAbs X="7.8704130172729492e+01" Y="6.5352522850036621e+01" Z="1.9269019255750685e+01" Direction="5.1837612712708871e+00" Pitch="0.0000000000000000e+00" Roll="0.0000000000000000e+00"/>
+        </Object>
+        <Object Type="other" Name="New Object01" Definition="RdMiscPylon03-32cm">
+            <StartPosAbs X="9.2241302490234375e+01" Y="3.3221649169921875e+01" Z="1.9247615574453523e+01" Direction="0.0000000000000000e+00" Pitch="0.0000000000000000e+00" Roll="0.0000000000000000e+00"/>
+        </Object>
+        <Object Type="other" Name="New Object01 Copy " Definition="RdMiscPylon03-32cm">
+            <StartPosAbs X="1.0089942169189453e+02" Y="3.7481676101684570e+01" Z="1.9247373190727554e+01" Direction="0.0000000000000000e+00" Pitch="0.0000000000000000e+00" Roll="0.0000000000000000e+00"/>
+        </Object>
+        <Object Type="other" Name="New Object01 Copy 01" Definition="RdMiscPylon03-32cm">
+            <StartPosAbs X="9.7388832092285156e+01" Y="2.3794361114501953e+01" Z="1.9241014823630213e+01" Direction="6.0480003039508965e+00" Pitch="0.0000000000000000e+00" Roll="0.0000000000000000e+00"/>
+        </Object>
+        <Object Type="other" Name="New Object01 Copy 02" Definition="RdMiscPylon03-32cm">
+            <StartPosAbs X="1.0614556121826172e+02" Y="2.8251613616943359e+01" Z="1.9240849959136352e+01" Direction="0.0000000000000000e+00" Pitch="0.0000000000000000e+00" Roll="0.0000000000000000e+00"/>
+        </Object>
+        <ObjectActions Object="New Object Copy 02"/>
+        <ObjectActions Object="New Object01"/>
+        <ObjectActions Object="New Object01 Copy "/>
+        <ObjectActions Object="New Object01 Copy 01"/>
+        <ObjectActions Object="New Object01 Copy 02"/>
+    </MovingObjectsControl>
+    <LightSigns>
+        <SignalController Id="1" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="2" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="3" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="4" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="5" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="6" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="7" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="8" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="9" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="10" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="11" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="12" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="13" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="14" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="15" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="16" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <SignalController Id="17" DelayRef="-1" Delay="0.0000000000000000e+00"/>
+        <Signal Id="10001"/>
+        <Signal Id="10002"/>
+        <Signal Id="10003"/>
+        <Signal Id="10004"/>
+        <Signal Id="10005"/>
+        <Signal Id="10006"/>
+        <Signal Id="10007"/>
+        <Signal Id="10008"/>
+        <Signal Id="10009"/>
+        <Signal Id="10010"/>
+        <Signal Id="10016"/>
+        <Signal Id="10017"/>
+        <Signal Id="10021"/>
+        <Signal Id="10022"/>
+        <Signal Id="10040"/>
+        <Signal Id="10041"/>
+        <Signal Id="10067"/>
+        <Signal Id="25166117"/>
+        <Signal Id="25166118"/>
+        <Signal Id="25166119"/>
+        <Signal Id="25166122"/>
+        <Signal Id="25166123"/>
+        <Signal Id="25166124"/>
+        <Signal Id="25166125"/>
+        <Signal Id="25166127"/>
+        <Signal Id="25166128"/>
+        <Signal Id="25166129"/>
+        <Signal Id="25166130"/>
+        <Signal Id="25166131"/>
+        <Signal Id="25166132"/>
+        <Signal Id="25166133"/>
+        <Signal Id="25166134"/>
+        <Signal Id="251661220"/>
+        <Signal Id="251661250"/>
+    </LightSigns>
+    <Selections/>
+</Scenario>
