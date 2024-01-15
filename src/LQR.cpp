@@ -20,7 +20,7 @@ LQR::~LQR()
 {
 }
 
-void LQR::get_param(Eigen::MatrixXf _Q, Eigen::MatrixXf _R, float ts)
+void LQR::get_param(Eigen::MatrixXd _Q, Eigen::MatrixXd _R, float ts)
 {
     dim_x = _Q.rows();
     dim_u = _R.rows();
@@ -35,11 +35,11 @@ void LQR::get_param(Eigen::MatrixXf _Q, Eigen::MatrixXf _R, float ts)
     max_num_iteration = 10000;
 }
 
-void LQR::discrete(Eigen::MatrixXf &_A, Eigen::MatrixXf &_B, int type)
+void LQR::discrete(Eigen::MatrixXd &_A, Eigen::MatrixXd &_B, int type)
 {
     A_d.resize(_A.rows(), _A.cols());
     B_d.resize(_B.rows(), _B.cols());
-    Eigen::MatrixXf I(_A.rows(), _A.cols());
+    Eigen::MatrixXd I(_A.rows(), _A.cols());
     I.setIdentity();
     if (type == 1) // front Euler
     {
@@ -65,9 +65,10 @@ void LQR::discrete(Eigen::MatrixXf &_A, Eigen::MatrixXf &_B, int type)
  *                  true    对输入矩阵进行离散
  *                  false   输入矩阵已经离散
  */
-void LQR::compute_ARE(Eigen::MatrixXf &A, Eigen::MatrixXf &B, bool is_dis)
+void LQR::compute_ARE(Eigen::MatrixXd &A, Eigen::MatrixXd &B, bool is_dis)
 {
-    Eigen::MatrixXf Ad_T, Bd_T;
+    Eigen::MatrixXd Ad_T, Bd_T;
+
     // check dim
     if ((A.rows() != A.cols()) && (A.rows() != B.rows()))
     {
@@ -125,7 +126,7 @@ void LQR::compute_ARE(Eigen::MatrixXf &A, Eigen::MatrixXf &B, bool is_dis)
     K.setOnes();
 }
 
-bool LQR::is_controllable(Eigen::MatrixXf &A, Eigen::MatrixXf &B)
+bool LQR::is_controllable(Eigen::MatrixXd &A, Eigen::MatrixXd &B)
 {
 
     if ((A.rows() != A.cols()) && (A.rows() != B.rows()))
@@ -134,9 +135,9 @@ bool LQR::is_controllable(Eigen::MatrixXf &A, Eigen::MatrixXf &B)
         return false;
     }
 
-    Eigen::MatrixXf tmp;
+    Eigen::MatrixXd tmp;
     tmp.setIdentity(A.rows(), A.rows());
-    Eigen::MatrixXf mat_CTRL(B.rows(), B.rows());
+    Eigen::MatrixXd mat_CTRL(B.rows(), B.rows());
 
     for (int i = 0; i < B.rows(); i++)
     {

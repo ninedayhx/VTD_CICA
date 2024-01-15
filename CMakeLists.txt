@@ -9,20 +9,19 @@ message(STATUS "email:1170535490@qq.com")
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}") 
 
-## Compile as C++11, supported in ROS Kinetic and newer
 include(CheckCXXCompilerFlag) 
+CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11) 
+if(COMPILER_SUPPORTS_CXX17) 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    add_definitions(-DCOMPILEDWITHC17)
+    message(STATUS "Using flag -std=c++17.")
+elseif(COMPILER_SUPPORTS_CXX11) 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    add_definitions(-DCOMPILEDWITHC11)
-    message(STATUS "Using flag -std=c++11.")
-elseif(COMPILER_SUPPORTS_CXX0X) 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
     add_definitions(-DCOMPILEDWITHC0X)
-    message(STATUS "Using flag -std=c++0x.")
+    message(STATUS "Using flag -std=c++11.")
 else()
-    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11/17 support. Please use a different C++ compiler.")
 endif()
 
 ## Find catkin macros and libraries
@@ -168,6 +167,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 	include
+	math
 	${catkin_INCLUDE_DIRS}
 	${EIGEN3_INCLUDE_DIR}
 	# ${PROJECT_SOURCE_DIR}/thirdparty/osqp/include
@@ -206,6 +206,23 @@ add_executable(${PROJECT_NAME}_node
 )
 
 target_link_libraries(${PROJECT_NAME}_node
+	${catkin_LIBRARIES}
+	${EIGEN3_LIBS}
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so
+	${PROJECT_SOURCE_DIR}/thirdparty/osqp/lib/libosqp.so
+	/usr/lib/x86_64-linux-gnu/libyaml-cpp.so
+
+)
+
+add_executable(rmpc_node 
+	src/rmpc_node.cpp
+	src/control.cpp
+	src/LQR.cpp
+	src/MPC_pro.cpp
+	math/discrete_lyapunov_equation.cpp
+)
+
+target_link_libraries(rmpc_node
 	${catkin_LIBRARIES}
 	${EIGEN3_LIBS}
 	${PROJECT_SOURCE_DIR}/thirdparty/osqp-eigen/lib/libOsqpEigen.so

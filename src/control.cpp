@@ -43,12 +43,13 @@ control_t::control_t()
 
     // clang-format off
     float T_delay = 0.01;
+    float T_ctrl = 0.01;
     follow_leader_mod.A.resize(3, 3);
     follow_leader_mod.B.resize(3, 1);
-    follow_leader_mod.A <<  0, 1, 0, 
-                            0, 0, -1, 
-                            0, 0, -1 / T_delay;
-    follow_leader_mod.B << 0, 0, 1 / T_delay;
+    follow_leader_mod.A <<  1, -T_ctrl, 0, 
+                            0, 1, T_ctrl, 
+                            0, 0, 1+T_ctrl / T_delay;
+    follow_leader_mod.B << 0, 0, T_ctrl / T_delay;
 
     float T_d = 0.1;
     float T_s = 0.01;

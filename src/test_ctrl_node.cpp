@@ -30,8 +30,8 @@ YAML::Node cfg;
 
 control_t car_ctrl;
 LQR LQR_lateral("LQR_lateral"), LQR_longtitute("LQR_longtitute"), LQR_lon_du("LQR_lon_du");
-Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
-Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
+Eigen::MatrixXd Q_lat1(2, 2), R_lat1(1, 1);
+Eigen::MatrixXd Q_lat2(2, 2), R_lat2(1, 1);
 MPC_follow_t *mpc_lon, *mpc_sp;
 
 common_msgs::Control_Test ctrl_msg;
@@ -80,25 +80,25 @@ int main(int argc, char **argv)
     cout << "use_soft_start: " << car_ctrl.use_soft_start << endl;
 
     // clang-format off
-    // Eigen::MatrixXf Q_lat1(2, 2), R_lat1(1, 1);
+    // Eigen::MatrixXd Q_lat1(2, 2), R_lat1(1, 1);
     Q_lat1 <<10, 0, 
              0,10;
     R_lat1 <<50000;
-    // Eigen::MatrixXf Q_lat2(2, 2), R_lat2(1, 1);
+    // Eigen::MatrixXd Q_lat2(2, 2), R_lat2(1, 1);
     Q_lat2 << 10, 0, 
               0, 10;
     R_lat2 << 300;
 
     LQR_lateral.get_param(Q_lat1, R_lat1, 0.01);
 
-    Eigen::MatrixXf Q_lon(3, 3), R_lon(1, 1);
+    Eigen::MatrixXd Q_lon(3, 3), R_lon(1, 1);
     Q_lon << 60, 0,  0,
              0,  10, 0,
              0,  0,  1000;
     R_lon << 50;
     LQR_longtitute.get_param(Q_lon, R_lon, 0.01);
     
-    Eigen::MatrixXf Q_lon_du(4, 4), R_lon_du(1, 1);
+    Eigen::MatrixXd Q_lon_du(4, 4), R_lon_du(1, 1);
 
     Q_lon_du << 75,  0,  0,   0,
                 0,   1,  0,   0,

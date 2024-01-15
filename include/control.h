@@ -60,10 +60,10 @@ public:
 class LTI
 {
 public:
-    Eigen::MatrixXf A;
-    Eigen::MatrixXf B;
-    Eigen::MatrixXf C;
-    Eigen::MatrixXf D;
+    Eigen::MatrixXd A;
+    Eigen::MatrixXd B;
+    Eigen::MatrixXd C;
+    Eigen::MatrixXd D;
 };
 
 /**
